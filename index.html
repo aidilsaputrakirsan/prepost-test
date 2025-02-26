@@ -7,33 +7,41 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Landing Page -->
-  <div id="landing">
+  <!-- Canvas untuk partikel dinamis -->
+  <canvas id="particles"></canvas>
+  
+  <!-- Tombol toggle tema -->
+  <div class="theme-toggle">
+    <button id="toggleTheme">Toggle Theme</button>
+  </div>
+  
+  <!-- Halaman Landing -->
+  <div id="landing" class="page">
     <h1>Welcome to Post-Test Quiz</h1>
     <p>Test your knowledge and speed!</p>
-    <button id="btnStart">Start Quiz</button>
+    <button id="btnStart" class="btn">Start Quiz</button>
   </div>
   
-  <!-- Login Page -->
-  <div id="login" class="hidden">
+  <!-- Halaman Login -->
+  <div id="login" class="page hidden">
     <h2>Enter Your Name</h2>
     <input type="text" id="name" placeholder="Your Name">
-    <button id="btnLogin">Login</button>
+    <button id="btnLogin" class="btn">Login</button>
   </div>
   
-  <!-- Quiz Page -->
-  <div id="quiz" class="hidden">
+  <!-- Halaman Quiz -->
+  <div id="quiz" class="page hidden">
     <h2>Post-Test Quiz</h2>
     <div id="question-container">
       <div id="question-text"></div>
       <div id="options"></div>
       <div id="timer">Time Left: <span id="timeLeft">15</span>s</div>
-      <button id="btnNext">Next</button>
+      <button id="btnNext" class="btn">Next</button>
     </div>
   </div>
   
-  <!-- Leaderboard Page -->
-  <div id="leaderboard" class="hidden">
+  <!-- Halaman Leaderboard -->
+  <div id="leaderboard" class="page hidden">
     <h2>Leaderboard</h2>
     <table id="leaderboardTable">
       <thead>
@@ -46,7 +54,7 @@
       <tbody>
       </tbody>
     </table>
-    <button id="btnRestart">Restart Quiz</button>
+    <button id="btnRestart" class="btn">Restart Quiz</button>
   </div>
   
   <script src="script.js"></script>
