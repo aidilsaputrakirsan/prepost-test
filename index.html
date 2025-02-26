@@ -1,1 +1,55 @@
-s
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Post-Test Quiz</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Landing Page -->
+  <div id="landing">
+    <h1>Welcome to Post-Test Quiz</h1>
+    <p>Test your knowledge and speed!</p>
+    <button id="btnStart">Start Quiz</button>
+  </div>
+  
+  <!-- Login Page -->
+  <div id="login" class="hidden">
+    <h2>Login</h2>
+    <input type="text" id="name" placeholder="Your Name">
+    <input type="email" id="email" placeholder="Your Email">
+    <button id="btnLogin">Login</button>
+  </div>
+  
+  <!-- Quiz Page -->
+  <div id="quiz" class="hidden">
+    <h2>Post-Test Quiz</h2>
+    <div id="question-container">
+      <div id="question-text"></div>
+      <div id="options"></div>
+      <div id="timer">Time: <span id="timeElapsed">0</span>s</div>
+      <button id="btnNext">Next</button>
+    </div>
+  </div>
+  
+  <!-- Leaderboard Page -->
+  <div id="leaderboard" class="hidden">
+    <h2>Leaderboard</h2>
+    <table id="leaderboardTable">
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Name</th>
+          <th>Score</th>
+        </tr>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+    <button id="btnRestart">Restart Quiz</button>
+  </div>
+  
+  <script src="script.js"></script>
+</body>
+</html>
