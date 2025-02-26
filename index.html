@@ -2,41 +2,36 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Post-Test Quiz</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <!-- Canvas untuk partikel dinamis -->
+<body class="dark">
+  <!-- Canvas untuk partikel dinamis (opsional, bisa dinonaktifkan jika performa mobile kurang optimal) -->
   <canvas id="particles"></canvas>
-  
-  <!-- Tombol toggle tema -->
-  <div class="theme-toggle">
-    <button id="toggleTheme">Toggle Theme</button>
-  </div>
   
   <!-- Halaman Landing -->
   <div id="landing" class="page">
-    <h1>Welcome to Post-Test Quiz</h1>
-    <p>Test your knowledge and speed!</p>
-    <button id="btnStart" class="btn">Start Quiz</button>
+    <h1>Post-Test Quiz</h1>
+    <p>Uji pengetahuan dan kecepatanmu!</p>
+    <button id="btnStart" class="btn">Mulai Quiz</button>
   </div>
   
   <!-- Halaman Login -->
   <div id="login" class="page hidden">
-    <h2>Enter Your Name</h2>
-    <input type="text" id="name" placeholder="Your Name">
-    <button id="btnLogin" class="btn">Login</button>
+    <h2>Masukkan Nama Kamu</h2>
+    <input type="text" id="name" placeholder="Nama">
+    <button id="btnLogin" class="btn">Masuk</button>
   </div>
   
   <!-- Halaman Quiz -->
   <div id="quiz" class="page hidden">
-    <h2>Post-Test Quiz</h2>
+    <h2>Quiz</h2>
     <div id="question-container">
       <div id="question-text"></div>
       <div id="options"></div>
-      <div id="timer">Time Left: <span id="timeLeft">15</span>s</div>
-      <button id="btnNext" class="btn">Next</button>
+      <div id="timer">Sisa Waktu: <span id="timeLeft">15</span>s</div>
+      <button id="btnNext" class="btn">Berikutnya</button>
     </div>
   </div>
   
@@ -46,15 +41,15 @@
     <table id="leaderboardTable">
       <thead>
         <tr>
-          <th>Rank</th>
-          <th>Name</th>
-          <th>Score</th>
+          <th>Peringkat</th>
+          <th>Nama</th>
+          <th>Skor</th>
         </tr>
       </thead>
       <tbody>
       </tbody>
     </table>
-    <button id="btnRestart" class="btn">Restart Quiz</button>
+    <button id="btnRestart" class="btn">Ulangi Quiz</button>
   </div>
   
   <script src="script.js"></script>

@@ -1,6 +1,6 @@
 /* script.js */
 
-// Ganti dengan URL web app Google Apps Script yang sudah Anda deploy
+// URL web app Google Apps Script Anda
 const backendUrl = 'https://script.google.com/macros/s/AKfycbwLYq4oQS4fxuWuh62Xu2rfFsEuHxOXC0OiwKvqt4zgluNIVyiQWjgJXnDUj7IYrNnY/exec';
 
 let currentUser = null;
@@ -19,7 +19,6 @@ const btnStart = document.getElementById('btnStart');
 const btnLogin = document.getElementById('btnLogin');
 const btnNext = document.getElementById('btnNext');
 const btnRestart = document.getElementById('btnRestart');
-const toggleThemeBtn = document.getElementById('toggleTheme');
 
 const nameInput = document.getElementById('name');
 const questionText = document.getElementById('question-text');
@@ -36,7 +35,7 @@ btnStart.addEventListener('click', () => {
 btnLogin.addEventListener('click', () => {
   const name = nameInput.value.trim();
   if (!name) {
-    alert("Please enter your name.");
+    alert("Masukkan nama kamu terlebih dahulu.");
     return;
   }
   loginUser(name);
@@ -48,10 +47,6 @@ btnNext.addEventListener('click', () => {
 
 btnRestart.addEventListener('click', () => {
   window.location.reload();
-});
-
-toggleThemeBtn.addEventListener('click', () => {
-  document.body.classList.toggle('dark');
 });
 
 // Particle Effect Setup
@@ -105,10 +100,7 @@ function handleParticles() {
   requestAnimationFrame(handleParticles);
 }
 
-window.addEventListener('resize', () => {
-  initParticles();
-});
-
+window.addEventListener('resize', initParticles);
 initParticles();
 handleParticles();
 
@@ -128,21 +120,19 @@ function loginUser(name) {
       loginDiv.classList.add('hidden');
       startQuiz();
     } else {
-      alert("Login failed: " + data.message);
+      alert("Login gagal: " + data.message);
     }
   })
   .catch(err => {
     console.error(err);
-    alert("Error connecting to server.");
+    alert("Terjadi kesalahan koneksi.");
   });
 }
 
 function startQuiz() {
   fetch(backendUrl, {
     method: 'POST',
-    body: JSON.stringify({
-      action: 'getQuestions'
-    })
+    body: JSON.stringify({ action: 'getQuestions' })
   })
   .then(response => response.json())
   .then(data => {
@@ -153,15 +143,15 @@ function startQuiz() {
         quizDiv.classList.remove('hidden');
         showQuestion();
       } else {
-        alert("No questions available.");
+        alert("Soal belum tersedia.");
       }
     } else {
-      alert("Failed to load questions.");
+      alert("Gagal mengambil soal.");
     }
   })
   .catch(err => {
     console.error(err);
-    alert("Error connecting to server.");
+    alert("Terjadi kesalahan koneksi.");
   });
 }
 
@@ -228,21 +218,19 @@ function submitAnswer() {
       currentQuestionIndex++;
       showQuestion();
     } else {
-      alert("Failed to submit answer: " + data.message);
+      alert("Gagal submit jawaban: " + data.message);
     }
   })
   .catch(err => {
     console.error(err);
-    alert("Error connecting to server.");
+    alert("Terjadi kesalahan koneksi.");
   });
 }
 
 function showLeaderboard() {
   fetch(backendUrl, {
     method: 'POST',
-    body: JSON.stringify({
-      action: 'getLeaderboard'
-    })
+    body: JSON.stringify({ action: 'getLeaderboard' })
   })
   .then(response => response.json())
   .then(data => {
@@ -264,11 +252,11 @@ function showLeaderboard() {
       });
       leaderboardDiv.classList.remove('hidden');
     } else {
-      alert("Failed to load leaderboard.");
+      alert("Gagal memuat leaderboard.");
     }
   })
   .catch(err => {
     console.error(err);
-    alert("Error connecting to server.");
+    alert("Terjadi kesalahan koneksi.");
   });
 }
