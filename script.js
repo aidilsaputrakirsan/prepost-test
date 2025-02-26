@@ -3,6 +3,7 @@
 // Ganti dengan URL web app Google Apps Script yang sudah Anda deploy
 const backendUrl = 'https://script.google.com/macros/s/AKfycbwLYq4oQS4fxuWuh62Xu2rfFsEuHxOXC0OiwKvqt4zgluNIVyiQWjgJXnDUj7IYrNnY/exec';
 
+
 let currentUser = null;
 let questions = [];
 let currentQuestionIndex = 0;
@@ -89,8 +90,8 @@ function startQuiz() {
       questions = data.questions;
       if (questions.length > 0) {
         currentQuestionIndex = 0;
-        showQuestion();
         quizDiv.classList.remove('hidden');
+        showQuestion();
       } else {
         alert("No questions available.");
       }
