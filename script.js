@@ -1,7 +1,7 @@
 /* script.js */
 
 // Ganti dengan URL web app Google Apps Script yang sudah Anda deploy
-const backendUrl = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL';
+const backendUrl = 'https://script.google.com/macros/s/AKfycbyf-snE06iVSTg7B0NaSG2riYfHM8c43RxO2k0PhI1Qn8eC_PgvTM-MspPVeovYOlYJ/exec';
 
 let currentUser = null;
 let questions = [];
