@@ -1,53 +1,112 @@
 /* style.css */
 
-body {
-    font-family: Arial, sans-serif;
-    background: #f4f4f4;
+/* CSS Variables untuk tema */
+:root {
+    --bg-color: #f4f4f4;
+    --text-color: #333;
+    --card-bg: #fff;
+    --btn-bg: #007BFF;
+    --btn-hover: #0056b3;
+    --btn-hover-overlay: rgba(255,255,255,0.2);
+  }
+  
+  body.dark {
+    --bg-color: #121212;
+    --text-color: #e0e0e0;
+    --card-bg: #1e1e1e;
+    --btn-bg: #1a73e8;
+    --btn-hover: #185abc;
+  }
+  
+  * {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
+  }
+  
+  body {
+    font-family: Arial, sans-serif;
+    background: var(--bg-color);
+    color: var(--text-color);
+    overflow: hidden;
+    transition: background 0.5s, color 0.5s;
+    position: relative;
+  }
+  
+  /* Setiap halaman tampil di atas canvas partikel */
+  .page {
+    position: relative;
+    z-index: 2;
+    margin: 20px auto;
+    max-width: 600px;
+    padding: 20px;
+    background: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.2);
     text-align: center;
+    transition: all 0.5s ease;
   }
   
   .hidden {
     display: none;
   }
   
-  #landing, #login, #quiz, #leaderboard {
-    margin: 20px auto;
-    max-width: 600px;
-    padding: 20px;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  /* Styling input */
+  input[type="text"] {
+    padding: 10px;
+    width: 80%;
+    font-size: 16px;
+    margin: 10px 0;
+    border: 2px solid var(--btn-bg);
+    border-radius: 4px;
+    transition: border 0.3s;
   }
   
-  button {
-    padding: 10px 20px;
+  input[type="text"]:focus {
+    border-color: var(--btn-hover);
+  }
+  
+  /* Tombol dengan efek hover multiple-layer */
+  .btn {
+    position: relative;
+    padding: 12px 24px;
     margin-top: 10px;
     border: none;
-    background: #007BFF;
+    background: var(--btn-bg);
     color: #fff;
     border-radius: 4px;
     cursor: pointer;
     font-size: 16px;
+    overflow: hidden;
+    transition: background 0.3s;
   }
   
-  button:hover {
-    background: #0056b3;
-  }
-  
-  #options button {
-    display: block;
+  .btn::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
     width: 100%;
-    margin: 10px 0;
+    height: 100%;
+    background: var(--btn-hover-overlay);
+    transition: left 0.3s;
+  }
+  
+  .btn:hover::after {
+    left: 0;
+  }
+  
+  .btn:hover {
+    background: var(--btn-hover);
+  }
+  
+  /* Styling untuk opsi soal */
+  #options .btn {
     text-align: left;
+    width: 100%;
   }
   
-  #options button.selected {
-    background: #28a745;
-    color: #fff;
-  }
-  
+  /* Table Styling */
   table {
     width: 100%;
     border-collapse: collapse;
@@ -56,20 +115,45 @@ body {
   
   th, td {
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--text-color);
   }
   
   tr:nth-child(even) {
-    background: #f9f9f9;
+    background: rgba(0,0,0,0.05);
   }
   
-  /* Animasi sederhana untuk leaderboard */
-  @keyframes fadeIn {
-    from {opacity: 0;}
-    to {opacity: 1;}
+  /* Theme Toggle Button */
+  .theme-toggle {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 3;
   }
   
-  #leaderboardTable tbody tr {
-    animation: fadeIn 1s ease-in;
+  .theme-toggle button {
+    background: var(--btn-bg);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  
+  .theme-toggle button:hover {
+    background: var(--btn-hover);
+  }
+  
+  /* Particle canvas styling */
+  #particles {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    background: var(--bg-color);
+    transition: background 0.5s;
   }
   
