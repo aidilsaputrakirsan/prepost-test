@@ -3,7 +3,6 @@
 // Ganti dengan URL web app Google Apps Script yang sudah Anda deploy
 const backendUrl = 'https://script.google.com/macros/s/AKfycbwLYq4oQS4fxuWuh62Xu2rfFsEuHxOXC0OiwKvqt4zgluNIVyiQWjgJXnDUj7IYrNnY/exec';
 
-
 let currentUser = null;
 let questions = [];
 let currentQuestionIndex = 0;
@@ -20,6 +19,7 @@ const btnStart = document.getElementById('btnStart');
 const btnLogin = document.getElementById('btnLogin');
 const btnNext = document.getElementById('btnNext');
 const btnRestart = document.getElementById('btnRestart');
+const toggleThemeBtn = document.getElementById('toggleTheme');
 
 const nameInput = document.getElementById('name');
 const questionText = document.getElementById('question-text');
@@ -50,8 +50,69 @@ btnRestart.addEventListener('click', () => {
   window.location.reload();
 });
 
-// Functions
+toggleThemeBtn.addEventListener('click', () => {
+  document.body.classList.toggle('dark');
+});
 
+// Particle Effect Setup
+const canvas = document.getElementById('particles');
+const ctx = canvas.getContext('2d');
+let particlesArray = [];
+const numberOfParticles = 100;
+
+function initParticles() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  particlesArray = [];
+  for (let i = 0; i < numberOfParticles; i++) {
+    particlesArray.push(new Particle());
+  }
+}
+
+function Particle() {
+  this.x = Math.random() * canvas.width;
+  this.y = Math.random() * canvas.height;
+  this.size = Math.random() * 3 + 1;
+  this.speedX = Math.random() * 1 - 0.5;
+  this.speedY = Math.random() * 1 - 0.5;
+  this.color = 'rgba(255,255,255,0.8)';
+}
+
+Particle.prototype.update = function() {
+  this.x += this.speedX;
+  this.y += this.speedY;
+  
+  // Pembungkusan partikel ketika mencapai tepi layar
+  if (this.x < 0) this.x = canvas.width;
+  if (this.x > canvas.width) this.x = 0;
+  if (this.y < 0) this.y = canvas.height;
+  if (this.y > canvas.height) this.y = 0;
+}
+
+Particle.prototype.draw = function() {
+  ctx.fillStyle = this.color;
+  ctx.beginPath();
+  ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function handleParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let i = 0; i < particlesArray.length; i++) {
+    particlesArray[i].update();
+    particlesArray[i].draw();
+  }
+  requestAnimationFrame(handleParticles);
+}
+
+window.addEventListener('resize', () => {
+  initParticles();
+});
+
+initParticles();
+handleParticles();
+
+// Quiz Functions
 function loginUser(name) {
   fetch(backendUrl, {
     method: 'POST',
@@ -77,7 +138,6 @@ function loginUser(name) {
 }
 
 function startQuiz() {
-  // Ambil soal post-test dari backend
   fetch(backendUrl, {
     method: 'POST',
     body: JSON.stringify({
@@ -106,13 +166,11 @@ function startQuiz() {
 }
 
 function showQuestion() {
-  // Hentikan timer jika masih berjalan
   clearInterval(timerInterval);
   timerCount = 15;
   timerSpan.textContent = timerCount;
 
   if (currentQuestionIndex >= questions.length) {
-    // Selesai, tampilkan leaderboard
     quizDiv.classList.add('hidden');
     showLeaderboard();
     return;
@@ -122,14 +180,13 @@ function showQuestion() {
   questionText.textContent = question.soal;
   optionsDiv.innerHTML = '';
   
-  // Buat tombol opsi (A, B, C, D)
   ['A', 'B', 'C', 'D'].forEach(optionKey => {
     if (question['opsi' + optionKey]) {
       const btn = document.createElement('button');
       btn.textContent = question['opsi' + optionKey];
       btn.dataset.option = optionKey;
+      btn.classList.add('btn');
       btn.addEventListener('click', () => {
-        // Tandai jawaban yang dipilih dan nonaktifkan tombol opsi lainnya
         Array.from(optionsDiv.children).forEach(child => child.disabled = true);
         btn.classList.add('selected');
       });
@@ -137,13 +194,12 @@ function showQuestion() {
     }
   });
   
-  // Mulai timer hitung mundur
   timerInterval = setInterval(() => {
     timerCount--;
     timerSpan.textContent = timerCount;
     if (timerCount <= 0) {
       clearInterval(timerInterval);
-      submitAnswer(); // Otomatis submit ketika waktu habis
+      submitAnswer();
     }
   }, 1000);
 }
@@ -152,10 +208,8 @@ function submitAnswer() {
   clearInterval(timerInterval);
   
   const selectedBtn = optionsDiv.querySelector('button.selected');
-  // Jika tidak ada jawaban yang dipilih, anggap kosong
   const selectedOption = selectedBtn ? selectedBtn.dataset.option : "";
   const question = questions[currentQuestionIndex];
-  // Hitung waktu yang digunakan = (15 - timerCount) detik
   const timeTaken = 15 - timerCount;
   
   fetch(backendUrl, {
