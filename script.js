@@ -1,7 +1,7 @@
 /* script.js */
 
 // Ganti dengan URL backend (Google Apps Script) kamu
-const backendUrl = 'https://script.google.com/macros/s/AKfycbwLYq4oQS4fxuWuh62Xu2rfFsEuHxOXC0OiwKvqt4zgluNIVyiQWjgJXnDUj7IYrNnY/exec';
+const backendUrl = 'https://script.google.com/macros/s/AKfycbzVPNgNv9_E7rYaElQ-uTct7jSx-AplsUNRNMku41vfgkk2Zle79JiYvVpdgpAwCChW/exec';
 
 // Page Elements
 const loadingPage = document.getElementById('loading');
@@ -354,22 +354,43 @@ if (btnCopyLink) {
   
 // Fungsi untuk menampilkan data leaderboard
 function populateLeaderboard(leaderboard) {
-  const tbody = document.querySelector("#leaderboardTable tbody");
-  tbody.innerHTML = "";
-  leaderboard.forEach((entry, index) => {
-    const tr = document.createElement("tr");
-    const rankTd = document.createElement("td");
-    rankTd.textContent = index + 1;
-    const nameTd = document.createElement("td");
-    nameTd.textContent = entry.name;
-    const scoreTd = document.createElement("td");
-    scoreTd.textContent = entry.score;
-    const timeTd = document.createElement("td");
-    timeTd.textContent = entry.time || "-";
-    tr.appendChild(rankTd);
-    tr.appendChild(nameTd);
-    tr.appendChild(scoreTd);
-    tr.appendChild(timeTd);
-    tbody.appendChild(tr);
-  });
-}
+    // Pastikan minimal ada 1,2,3 data
+    if (leaderboard[0]) {
+      firstPlaceAvatar.innerHTML = `<img src="${leaderboard[0].avatar}" alt="1st">`;
+      firstPlaceName.textContent = leaderboard[0].name;
+      firstPlaceScore.textContent = leaderboard[0].score;
+    }
+    if (leaderboard[1]) {
+      secondPlaceAvatar.innerHTML = `<img src="${leaderboard[1].avatar}" alt="2nd">`;
+      secondPlaceName.textContent = leaderboard[1].name;
+      secondPlaceScore.textContent = leaderboard[1].score;
+    }
+    if (leaderboard[2]) {
+      thirdPlaceAvatar.innerHTML = `<img src="${leaderboard[2].avatar}" alt="3rd">`;
+      thirdPlaceName.textContent = leaderboard[2].name;
+      thirdPlaceScore.textContent = leaderboard[2].score;
+    }
+  
+    // Lalu tampilkan sisanya di tabel
+    const tbody = document.querySelector("#leaderboardTable tbody");
+    tbody.innerHTML = "";
+    leaderboard.forEach((entry, index) => {
+      // Lewati 3 teratas agar tidak duplikat di tabel
+      if (index < 3) return;
+      const tr = document.createElement("tr");
+      const rankTd = document.createElement("td");
+      rankTd.textContent = index + 1;
+      const nameTd = document.createElement("td");
+      nameTd.textContent = entry.name;
+      const scoreTd = document.createElement("td");
+      scoreTd.textContent = entry.score;
+      const timeTd = document.createElement("td");
+      timeTd.textContent = entry.time || "-";
+      tr.appendChild(rankTd);
+      tr.appendChild(nameTd);
+      tr.appendChild(scoreTd);
+      tr.appendChild(timeTd);
+      tbody.appendChild(tr);
+    });
+  }
+  
