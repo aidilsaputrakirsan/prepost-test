@@ -55,56 +55,61 @@ let timerInterval;
 // -------------------------
 
 // Fungsi untuk mengambil soal dari backend (Spreadsheet)
-function loadQuizData() {
-  fetch(backendUrl, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'getQuestions' })
-  })
-    .then(response => response.json())
-    .then(data => {
-      if (data.status === 'success') {
-        questions = data.questions;
-        totalQuestionsEl.textContent = questions.length;
-      } else {
-        alert("Gagal mengambil soal: " + data.message);
-      }
+function loadQuizData(callback) {
+    fetch(backendUrl, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'getQuestions' })
     })
-    .catch(err => {
-      console.error(err);
-      alert("Terjadi kesalahan koneksi saat mengambil soal.");
-    });
-}
-
-// Fungsi untuk login user via backend
-function loginUser(name, avatarUrl) {
-  fetch(backendUrl, {
-    method: 'POST',
-    body: JSON.stringify({
-      action: 'login',
-      name: name,
-      avatar: avatarUrl
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success') {
+          questions = data.questions;
+          totalQuestionsEl.textContent = questions.length;
+          // Pastikan soal sudah ada sebelum memulai quiz
+          if (questions.length > 0) {
+            callback();
+          } else {
+            alert("Soal tidak tersedia. Silakan periksa sheet SoalPostTest.");
+          }
+        } else {
+          alert("Gagal mengambil soal: " + data.message);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Terjadi kesalahan koneksi saat mengambil soal.");
+      });
+  }
+  
+  // Fungsi untuk login user via backend
+  function loginUser(name, avatarUrl) {
+    fetch(backendUrl, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'login',
+        name: name,
+        avatar: avatarUrl
+      })
     })
-  })
-    .then(response => response.json())
-    .then(data => {
-      if (data.status === 'success') {
-        currentUser = data.user; // { id, name, avatar }
-        userNameEl.textContent = currentUser.name;
-        userAvatar.src = currentUser.avatar || avatarUrl;
-        loginPage.classList.add('hidden');
-        // Setelah login, ambil soal dari backend
-        loadQuizData();
-        setTimeout(startQuiz, 500); // beri waktu sejenak agar soal terload
-      } else {
-        alert("Login gagal: " + data.message);
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      alert("Terjadi kesalahan koneksi saat login.");
-    });
-}
-
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success') {
+          currentUser = data.user; // { id, name, avatar }
+          userNameEl.textContent = currentUser.name;
+          userAvatar.src = currentUser.avatar || avatarUrl;
+          loginPage.classList.add('hidden');
+          // Ambil soal dari backend dan mulai quiz setelah soal selesai dimuat
+          loadQuizData(startQuiz);
+        } else {
+          alert("Login gagal: " + data.message);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Terjadi kesalahan koneksi saat login.");
+      });
+  }
+  
 // Fungsi untuk submit jawaban ke backend
 function submitAnswer(selectedOption) {
   clearInterval(timerInterval);
