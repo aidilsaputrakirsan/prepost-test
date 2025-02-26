@@ -45,10 +45,11 @@ const themeToggle = document.getElementById('themeToggle');
 // Global Variables
 let currentUser = {};   // Akan diisi dari backend saat login
 let currentAvatarSeed = 1;
-let questions = [];     // Data soal akan diambil dari backend (spreadsheet)
+let questions = [];     // Data soal dari backend (Spreadsheet)
 let currentQuestionIndex = 0;
 const timerDuration = 15;
 let timerInterval;
+let totalScore = 0;     // Akumulasi skor peserta
 
 // -------------------------
 // Backend Integration
@@ -56,65 +57,63 @@ let timerInterval;
 
 // Fungsi untuk mengambil soal dari backend (Spreadsheet)
 function loadQuizData(callback) {
-    fetch(backendUrl, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'getQuestions' })
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === 'success') {
-          questions = data.questions;
-          totalQuestionsEl.textContent = questions.length;
-          // Pastikan soal sudah ada sebelum memulai quiz
-          if (questions.length > 0) {
-            callback();
-          } else {
-            alert("Soal tidak tersedia. Silakan periksa sheet SoalPostTest.");
-          }
+  fetch(backendUrl, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'getQuestions' })
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'success') {
+        questions = data.questions;
+        totalQuestionsEl.textContent = questions.length;
+        if (questions.length > 0) {
+          callback();
         } else {
-          alert("Gagal mengambil soal: " + data.message);
+          alert("Soal tidak tersedia. Silakan periksa sheet SoalPostTest.");
         }
-      })
-      .catch(err => {
-        console.error(err);
-        alert("Terjadi kesalahan koneksi saat mengambil soal.");
-      });
-  }
+      } else {
+        alert("Gagal mengambil soal: " + data.message);
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Terjadi kesalahan koneksi saat mengambil soal.");
+    });
+}
   
-  // Fungsi untuk login user via backend
-  function loginUser(name, avatarUrl) {
-    fetch(backendUrl, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'login',
-        name: name,
-        avatar: avatarUrl
-      })
+// Fungsi untuk login user via backend
+function loginUser(name, avatarUrl) {
+  fetch(backendUrl, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'login',
+      name: name,
+      avatar: avatarUrl
     })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === 'success') {
-          currentUser = data.user; // { id, name, avatar }
-          userNameEl.textContent = currentUser.name;
-          userAvatar.src = currentUser.avatar || avatarUrl;
-          loginPage.classList.add('hidden');
-          // Ambil soal dari backend dan mulai quiz setelah soal selesai dimuat
-          loadQuizData(startQuiz);
-        } else {
-          alert("Login gagal: " + data.message);
-        }
-      })
-      .catch(err => {
-        console.error(err);
-        alert("Terjadi kesalahan koneksi saat login.");
-      });
-  }
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'success') {
+        currentUser = data.user; // { id, name, avatar }
+        userNameEl.textContent = currentUser.name;
+        userAvatar.src = currentUser.avatar || avatarUrl;
+        loginPage.classList.add('hidden');
+        // Ambil soal dari backend dan mulai quiz setelah soal selesai dimuat
+        loadQuizData(startQuiz);
+      } else {
+        alert("Login gagal: " + data.message);
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Terjadi kesalahan koneksi saat login.");
+    });
+}
   
 // Fungsi untuk submit jawaban ke backend
 function submitAnswer(selectedOption) {
   clearInterval(timerInterval);
   const currentQ = questions[currentQuestionIndex];
-  // Hitung waktu yang digunakan: timerDuration - sisa waktu
   const timeTaken = timerDuration - parseInt(timeLeftEl.textContent);
   
   fetch(backendUrl, {
@@ -130,8 +129,8 @@ function submitAnswer(selectedOption) {
     .then(response => response.json())
     .then(data => {
       if (data.status === 'success') {
-        // Jika ingin menampilkan result per soal, kamu bisa tampilkan di halaman answerResultPage
-        // Untuk saat ini, langsung lanjut ke soal berikutnya
+        // Tambahkan skor dari soal ini ke totalScore
+        totalScore += data.score;
         currentQuestionIndex++;
         updateProgress();
         setTimeout(() => {
@@ -146,7 +145,7 @@ function submitAnswer(selectedOption) {
       alert("Terjadi kesalahan koneksi saat submit jawaban.");
     });
 }
-
+  
 // Fungsi untuk mengambil leaderboard dari backend
 function fetchLeaderboard() {
   fetch(backendUrl, {
@@ -168,7 +167,7 @@ function fetchLeaderboard() {
       alert("Terjadi kesalahan koneksi saat mengambil leaderboard.");
     });
 }
-
+  
 // -------------------------
 // UI & Quiz Logic
 // -------------------------
@@ -181,7 +180,7 @@ themeToggle.addEventListener('change', () => {
     document.body.classList.remove('light-theme');
   }
 });
-
+  
 // Particle Effect
 const canvas = document.getElementById('particles');
 const ctx = canvas.getContext('2d');
@@ -220,7 +219,7 @@ function animateParticles() {
 window.addEventListener('resize', initParticles);
 initParticles();
 animateParticles();
-
+  
 // Avatar Selection
 prevAvatar.addEventListener('click', () => {
   currentAvatarSeed = currentAvatarSeed > 1 ? currentAvatarSeed - 1 : 100;
@@ -235,10 +234,9 @@ function updateAvatar() {
   selectedAvatar.src = url;
   userAvatar.src = url;
 }
-
+  
 // Navigation Transitions
 window.addEventListener('load', () => {
-  // Simulasi loading
   setTimeout(() => {
     loadingPage.classList.add('hidden');
     landingPage.classList.remove('hidden');
@@ -258,13 +256,13 @@ btnLogin.addEventListener('click', () => {
     alert("Masukkan nama kamu terlebih dahulu.");
     return;
   }
-  // Panggil backend login
   loginUser(name, selectedAvatar.src);
 });
-
+  
 // Quiz Logic
 function startQuiz() {
   currentQuestionIndex = 0;
+  totalScore = 0; // Reset total score
   updateProgress();
   showQuestion();
   quizPage.classList.remove('hidden');
@@ -309,7 +307,7 @@ function resetTimer() {
   }, 1000);
 }
 function updateTimerCircle(timeLeft) {
-  const totalLength = 283; // Sesuaikan dengan nilai SVG circle
+  const totalLength = 283;
   const offset = totalLength - (timeLeft / timerDuration) * totalLength;
   document.querySelector(".timer-progress").style.strokeDashoffset = offset;
 }
@@ -319,16 +317,13 @@ function updateProgress() {
 }
 function endQuiz() {
   quizPage.classList.add("hidden");
-  // Tampilkan final score (skor final bisa diambil dari backend atau dihitung lokal)
   finalScorePage.classList.remove("hidden");
-  // Contoh: set final score statis; sebaiknya integrasikan dengan backend untuk menghitung skor total
-  document.getElementById("finalScore").textContent = "80";
-  // Jalankan animasi confetti jika diinginkan (pastikan library confetti.js telah dimuat)
+  document.getElementById("finalScore").textContent = totalScore;
   if (typeof confetti !== "undefined") {
     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
   }
 }
-
+  
 // Leaderboard & Share Modal
 if (btnShowLeaderboard) {
   btnShowLeaderboard.addEventListener("click", () => {
@@ -356,7 +351,7 @@ if (btnCopyLink) {
     alert("Link berhasil disalin!");
   });
 }
-
+  
 // Fungsi untuk menampilkan data leaderboard
 function populateLeaderboard(leaderboard) {
   const tbody = document.querySelector("#leaderboardTable tbody");
@@ -370,7 +365,7 @@ function populateLeaderboard(leaderboard) {
     const scoreTd = document.createElement("td");
     scoreTd.textContent = entry.score;
     const timeTd = document.createElement("td");
-    timeTd.textContent = entry.time || "-"; // jika waktu tersedia
+    timeTd.textContent = entry.time || "-";
     tr.appendChild(rankTd);
     tr.appendChild(nameTd);
     tr.appendChild(scoreTd);
