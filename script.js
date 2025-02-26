@@ -1,13 +1,13 @@
 /* script.js */
 
 // Ganti dengan URL web app Google Apps Script yang sudah Anda deploy
-const backendUrl = 'https://script.google.com/macros/s/AKfycbyf-snE06iVSTg7B0NaSG2riYfHM8c43RxO2k0PhI1Qn8eC_PgvTM-MspPVeovYOlYJ/exec';
+const backendUrl = 'https://script.google.com/macros/s/AKfycbwLYq4oQS4fxuWuh62Xu2rfFsEuHxOXC0OiwKvqt4zgluNIVyiQWjgJXnDUj7IYrNnY/exec';
 
 let currentUser = null;
 let questions = [];
 let currentQuestionIndex = 0;
-let questionStartTime = 0;
 let timerInterval = null;
+let timerCount = 15;
 
 // DOM Elements
 const landingDiv = document.getElementById('landing');
@@ -21,10 +21,9 @@ const btnNext = document.getElementById('btnNext');
 const btnRestart = document.getElementById('btnRestart');
 
 const nameInput = document.getElementById('name');
-const emailInput = document.getElementById('email');
 const questionText = document.getElementById('question-text');
 const optionsDiv = document.getElementById('options');
-const timerSpan = document.getElementById('timeElapsed');
+const timerSpan = document.getElementById('timeLeft');
 const leaderboardTableBody = document.querySelector('#leaderboardTable tbody');
 
 // Event Listeners
@@ -35,12 +34,11 @@ btnStart.addEventListener('click', () => {
 
 btnLogin.addEventListener('click', () => {
   const name = nameInput.value.trim();
-  const email = emailInput.value.trim();
-  if (!name || !email) {
-    alert("Please enter both name and email.");
+  if (!name) {
+    alert("Please enter your name.");
     return;
   }
-  loginUser(name, email);
+  loginUser(name);
 });
 
 btnNext.addEventListener('click', () => {
@@ -53,19 +51,18 @@ btnRestart.addEventListener('click', () => {
 
 // Functions
 
-function loginUser(name, email) {
+function loginUser(name) {
   fetch(backendUrl, {
     method: 'POST',
     body: JSON.stringify({
       action: 'login',
-      name: name,
-      email: email
+      name: name
     })
   })
   .then(response => response.json())
   .then(data => {
     if (data.status === 'success') {
-      currentUser = data.user; // { id, name, email }
+      currentUser = data.user; // { id, name }
       loginDiv.classList.add('hidden');
       startQuiz();
     } else {
@@ -108,6 +105,11 @@ function startQuiz() {
 }
 
 function showQuestion() {
+  // Hentikan timer jika masih berjalan
+  clearInterval(timerInterval);
+  timerCount = 15;
+  timerSpan.textContent = timerCount;
+
   if (currentQuestionIndex >= questions.length) {
     // Selesai, tampilkan leaderboard
     quizDiv.classList.add('hidden');
@@ -115,7 +117,6 @@ function showQuestion() {
     return;
   }
   
-  clearInterval(timerInterval);
   const question = questions[currentQuestionIndex];
   questionText.textContent = question.soal;
   optionsDiv.innerHTML = '';
@@ -135,24 +136,26 @@ function showQuestion() {
     }
   });
   
-  // Reset dan mulai timer untuk soal ini
-  timerSpan.textContent = '0';
-  questionStartTime = Date.now();
+  // Mulai timer hitung mundur
   timerInterval = setInterval(() => {
-    const seconds = Math.floor((Date.now() - questionStartTime) / 1000);
-    timerSpan.textContent = seconds;
+    timerCount--;
+    timerSpan.textContent = timerCount;
+    if (timerCount <= 0) {
+      clearInterval(timerInterval);
+      submitAnswer(); // Otomatis submit ketika waktu habis
+    }
   }, 1000);
 }
 
 function submitAnswer() {
+  clearInterval(timerInterval);
+  
   const selectedBtn = optionsDiv.querySelector('button.selected');
-  if (!selectedBtn) {
-    alert("Please select an answer.");
-    return;
-  }
-  const selectedOption = selectedBtn.dataset.option;
+  // Jika tidak ada jawaban yang dipilih, anggap kosong
+  const selectedOption = selectedBtn ? selectedBtn.dataset.option : "";
   const question = questions[currentQuestionIndex];
-  const timeTaken = (Date.now() - questionStartTime) / 1000; // dalam detik
+  // Hitung waktu yang digunakan = (15 - timerCount) detik
+  const timeTaken = 15 - timerCount;
   
   fetch(backendUrl, {
     method: 'POST',
