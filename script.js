@@ -1,7 +1,7 @@
 /* script.js */
 
 // Ganti dengan URL backend (Google Apps Script) terbaru
-const backendUrl = 'https://script.google.com/macros/s/AKfycby4Sw7UwqUtIDotWR3ZFzcZ5L2u0zBedMeJ8TEUNl6JB3z-rAqG0R--K-1qQeNrI9cN/exec';
+const backendUrl = 'https://script.google.com/macros/s/AKfycbwZjDVus9ud31AuH6kEcDFXMUU4Kb98uwN9lfJnsl-ugGx2LOu4L4ncljkhX0r2EOOh/exec';
 
 // -------------------------
 // Page Elements
