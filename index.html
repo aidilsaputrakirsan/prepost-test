@@ -82,6 +82,144 @@
     </div>
   </div>
   
+<!-- Tambahkan halaman ruang tunggu setelah login -->
+<div id="waitingRoom" class="page hidden animate__animated">
+  <div class="card-container">
+    <div class="card-content">
+      <div class="quiz-icon">
+        <i class="fas fa-clock"></i>
+      </div>
+      <h2>Ruang Tunggu</h2>
+      <p>Menunggu admin memulai quiz...</p>
+      
+      <!-- Informasi peserta -->
+      <div class="waiting-user-info">
+        <img id="waitingUserAvatar" src="https://api.dicebear.com/6.x/avataaars/svg?seed=1" alt="Avatar">
+        <span id="waitingUserName">User</span>
+      </div>
+      
+      <!-- Daftar peserta yang menunggu -->
+      <div class="waiting-participants">
+        <h3>Peserta Lain</h3>
+        <div id="waitingParticipantsList" class="participants-list">
+          <!-- Diisi secara dinamis oleh JavaScript -->
+          <div class="participant-item skeleton-loading"></div>
+          <div class="participant-item skeleton-loading"></div>
+          <div class="participant-item skeleton-loading"></div>
+        </div>
+      </div>
+      
+      <!-- Loading indicator -->
+      <div class="waiting-status">
+        <div class="waiting-spinner"></div>
+        <p id="waitingStatusText">Menunggu admin memulai...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tambahkan halaman admin login -->
+<div id="adminLogin" class="page hidden animate__animated">
+  <div class="card-container">
+    <div class="card-content">
+      <div class="back-button" id="backToLandingFromAdmin">
+        <i class="fas fa-arrow-left"></i>
+      </div>
+      <div class="quiz-icon">
+        <i class="fas fa-user-shield"></i>
+      </div>
+      <h2>Admin Login</h2>
+      <div class="input-group">
+        <label for="adminKey">Admin Key</label>
+        <input type="password" id="adminKey" placeholder="Masukkan admin key">
+        <i class="fas fa-key input-icon"></i>
+      </div>
+      <button id="btnAdminLogin" class="btn btn-primary">
+        <span>Login Admin</span>
+        <i class="fas fa-sign-in-alt"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Tambahkan halaman admin panel -->
+<div id="adminPanel" class="page hidden animate__animated">
+  <div class="card-container admin-container">
+    <div class="admin-header">
+      <h2><i class="fas fa-user-shield"></i> Admin Panel</h2>
+      <button id="adminLogout" class="btn-icon">
+        <i class="fas fa-sign-out-alt"></i>
+      </button>
+    </div>
+    
+    <div class="admin-quiz-control">
+      <div class="quiz-status-card">
+        <h3>Status Quiz</h3>
+        <div class="status-indicator" id="quizStatusIndicator">
+          <span class="status-dot waiting"></span>
+          <span id="quizStatusText">Menunggu</span>
+        </div>
+        <p id="participantCount">0 peserta menunggu</p>
+      </div>
+      
+      <div class="admin-actions">
+        <button id="btnStartQuiz" class="btn btn-primary">
+          <i class="fas fa-play"></i>
+          <span>Mulai Quiz</span>
+        </button>
+        <button id="btnEndQuiz" class="btn btn-secondary" disabled>
+          <i class="fas fa-stop"></i>
+          <span>Akhiri Quiz</span>
+        </button>
+        <button id="btnResetQuiz" class="btn btn-secondary">
+          <i class="fas fa-redo"></i>
+          <span>Reset Quiz</span>
+        </button>
+      </div>
+    </div>
+    
+    <div class="admin-stats">
+      <h3>Statistik Quiz</h3>
+      <div class="admin-stats-grid">
+        <div class="stat-box">
+          <div class="stat-icon"><i class="fas fa-users"></i></div>
+          <div class="stat-value" id="totalParticipants">0</div>
+          <div class="stat-label">Total Peserta</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
+          <div class="stat-value" id="activeParticipants">0</div>
+          <div class="stat-label">Sedang Mengerjakan</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+          <div class="stat-value" id="finishedParticipants">0</div>
+          <div class="stat-label">Selesai</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="admin-progress">
+      <h3>Progress Peserta</h3>
+      <div class="admin-progress-list" id="adminProgressList">
+        <!-- Diisi secara dinamis oleh JavaScript -->
+      </div>
+    </div>
+    
+    <div class="admin-actions">
+      <button id="btnAdminLeaderboard" class="btn btn-primary">
+        <i class="fas fa-trophy"></i>
+        <span>Lihat Leaderboard</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Tambahkan link admin di halaman landing -->
+<div class="admin-link">
+  <a href="#" id="adminLoginLink">Admin</a>
+</div>
+
   <!-- Halaman Quiz -->
   <div id="quiz" class="page hidden animate__animated">
     <div class="card-container">
