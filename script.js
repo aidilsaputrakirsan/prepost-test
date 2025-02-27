@@ -1,7 +1,7 @@
 /* script.js */
 
 // Ganti dengan URL backend (Google Apps Script) terbaru
-const backendUrl = 'https://script.google.com/macros/s/AKfycbxAOPRXitaGCoUPGHitvAjWhgB1tjUDBHAoxomjQmWqlFvzArOo21-gaQJP7b6CP94U/exec';
+const backendUrl = 'https://script.google.com/macros/s/AKfycbx-P6fLDmzeJq9Pa3yFYWNeh9bNI7oMgSyx59ZVL_Sbv7yrKolmXILd1KM22LiLNSNk/exec';
 
 // -------------------------
 // Page Elements
@@ -617,9 +617,42 @@ function populateLeaderboard(leaderboard) {
   }
 }
 
-// -------------------------
-// Event Listeners
-// -------------------------
+// Tambahkan kode berikut ke bagian awal file script.js (setelah deklarasi variabel)
+
+// Fungsi untuk mengatur tema
+function setTheme(isLight) {
+  if (isLight) {
+    document.body.classList.add('light-theme');
+    localStorage.setItem('theme', 'light');
+  } else {
+    document.body.classList.remove('light-theme');
+    localStorage.setItem('theme', 'dark');
+  }
+}
+
+// Cek dan terapkan tema yang tersimpan
+function initTheme() {
+  // Cek preferensi tema yang tersimpan
+  const savedTheme = localStorage.getItem('theme');
+  
+  if (savedTheme === 'light') {
+    themeToggle.checked = true;
+    setTheme(true);
+  } else {
+    themeToggle.checked = false;
+    setTheme(false);
+  }
+}
+
+// Event listener untuk tombol tema
+if (themeToggle) {
+  themeToggle.addEventListener('change', () => {
+    setTheme(themeToggle.checked);
+  });
+  
+  // Inisialisasi tema saat halaman dimuat
+  window.addEventListener('DOMContentLoaded', initTheme);
+}
 
 // Theme Toggle
 if (themeToggle) {
