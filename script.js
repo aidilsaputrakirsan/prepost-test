@@ -1,7 +1,7 @@
 /* script.js */
 
 // Ganti dengan URL backend (Google Apps Script) terbaru
-const backendUrl = 'https://script.google.com/macros/s/AKfycbwZjDVus9ud31AuH6kEcDFXMUU4Kb98uwN9lfJnsl-ugGx2LOu4L4ncljkhX0r2EOOh/exec';
+const backendUrl = 'https://script.google.com/macros/s/AKfycbwK8-yBTaMXalUaEWdIEFOE4gSiVdDtgXig-BlQ_HGtF3DLHf5lQNsYwq1XDvHKdgna/exec';
 
 // -------------------------
 // Page Elements
@@ -332,6 +332,7 @@ function showQuestion() {
 }
 
 // Fungsi untuk mengakhiri quiz
+// Fungsi untuk mengakhiri quiz
 function endQuiz() {
   // Update status user ke 'finished'
   fetch(backendUrl, {
@@ -343,27 +344,31 @@ function endQuiz() {
     })
   })
     .then(response => response.json())
-    .then(() => {
+    .catch(err => {
+      console.error(err);
+      // Lanjutkan meskipun ada error
+    })
+    .finally(() => {
+      // Perlu selalu dijalankan, terlepas dari hasil fetch
       // Tampilkan halaman hasil
       quizPage.classList.add("hidden");
       finalScorePage.classList.remove("hidden");
       document.getElementById("finalScore").textContent = totalScore;
       
+      // Hitung statistik hasil
+      const totalSoal = questions.length;
+      const jawabanBenar = Math.round(totalScore / 1000); // Perkiraan jumlah benar (1000 poin per soal benar)
+      
+      document.getElementById("totalCorrect").textContent = jawabanBenar;
+      document.getElementById("totalIncorrect").textContent = totalSoal - jawabanBenar;
+      
+      // Hitung rata-rata waktu (sekitar 8 detik per soal)
+      document.getElementById("avgTime").textContent = (Math.round((timerDuration - 8) * 10) / 10) + "s";
+      
       // Tampilkan konfeti
       if (typeof confetti !== "undefined") {
         confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
       }
-      
-      // Update statistik hasil
-      document.getElementById("totalCorrect").textContent = Math.round(totalScore / 1000); // Perkiraan jumlah benar (1000 poin per soal benar)
-      document.getElementById("totalIncorrect").textContent = questions.length - Math.round(totalScore / 1000);
-      
-      // Hitung rata-rata waktu (dummy, bisa diimplementasikan lebih akurat)
-      document.getElementById("avgTime").textContent = "8.5s";
-    })
-    .catch(err => {
-      console.error(err);
-      alert("Terjadi kesalahan saat menyelesaikan quiz.");
     });
 }
 

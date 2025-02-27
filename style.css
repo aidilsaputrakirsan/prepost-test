@@ -1398,3 +1398,12 @@
     flex-direction: column;
   }
 }
+
+/* Sembunyikan link admin saat halaman lain aktif */
+#waitingRoom:not(.hidden) ~ .admin-link,
+#quiz:not(.hidden) ~ .admin-link,
+#final-score:not(.hidden) ~ .admin-link,
+#leaderboardPage:not(.hidden) ~ .admin-link,
+#answer-result:not(.hidden) ~ .admin-link {
+  display: none;
+}
