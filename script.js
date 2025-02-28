@@ -644,43 +644,6 @@ function populateLeaderboard(leaderboard) {
   }
 }
 
-// Tambahkan kode berikut ke bagian awal file script.js (setelah deklarasi variabel)
-
-// Fungsi untuk mengatur tema
-function setTheme(isLight) {
-  if (isLight) {
-    document.body.classList.add('light-theme');
-    localStorage.setItem('theme', 'light');
-  } else {
-    document.body.classList.remove('light-theme');
-    localStorage.setItem('theme', 'dark');
-  }
-}
-
-// Cek dan terapkan tema yang tersimpan
-function initTheme() {
-  // Cek preferensi tema yang tersimpan
-  const savedTheme = localStorage.getItem('theme');
-  
-  if (savedTheme === 'light') {
-    themeToggle.checked = true;
-    setTheme(true);
-  } else {
-    themeToggle.checked = false;
-    setTheme(false);
-  }
-}
-
-// Event listener untuk tombol tema
-if (themeToggle) {
-  themeToggle.addEventListener('change', () => {
-    setTheme(themeToggle.checked);
-  });
-  
-  // Inisialisasi tema saat halaman dimuat
-  window.addEventListener('DOMContentLoaded', initTheme);
-}
-
 // Particle Effect
 const canvas = document.getElementById('particles');
 if (canvas) {
