@@ -71,7 +71,9 @@ const currentQuestionEl = document.getElementById('currentQuestion');
 const totalQuestionsEl = document.getElementById('totalQuestions');
 const progressFill = document.querySelector('.progress-fill');
 
-// Ganti kedua implementasi tema dengan versi yang sudah terkonsolidasi ini
+// Theme Toggle Element
+const themeToggle = document.getElementById('themeToggle');
+
 // -------------------------
 // Global Variables
 // -------------------------
@@ -90,7 +92,8 @@ let quizState = "waiting"; // waiting, started, finished
 let pollingInterval;
 
 // -------------------------
-// Backend Integration
+// Theme Functions
+// -------------------------
 
 // Fungsi untuk mengatur tema
 function setTheme(isLight) {
@@ -105,8 +108,8 @@ function setTheme(isLight) {
   }
 }
 
-// Inisialisasi tema saat dokumen dimuat
-document.addEventListener('DOMContentLoaded', function() {
+// Gunakan load event (bukan DOMContentLoaded) untuk memastikan elemen sudah ada
+window.addEventListener('load', function() {
   // Cek preferensi tema yang tersimpan
   const savedTheme = localStorage.getItem('theme');
   
@@ -120,6 +123,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+
+// -------------------------
+// Backend Integration
 // -------------------------
 
 // Fungsi untuk login user via backend
@@ -358,7 +364,6 @@ function showQuestion() {
   resetTimer();
 }
 
-// Fungsi untuk mengakhiri quiz
 // Fungsi untuk mengakhiri quiz
 function endQuiz() {
   // Update status user ke 'finished'
@@ -643,6 +648,10 @@ function populateLeaderboard(leaderboard) {
     }
   }
 }
+
+// -------------------------
+// UI Effects & Interactions
+// -------------------------
 
 // Particle Effect
 const canvas = document.getElementById('particles');
