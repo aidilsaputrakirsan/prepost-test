@@ -654,17 +654,6 @@ if (themeToggle) {
   window.addEventListener('DOMContentLoaded', initTheme);
 }
 
-// Theme Toggle
-if (themeToggle) {
-  themeToggle.addEventListener('change', () => {
-    if (themeToggle.checked) {
-      document.body.classList.add('light-theme');
-    } else {
-      document.body.classList.remove('light-theme');
-    }
-  });
-}
-
 // Particle Effect
 const canvas = document.getElementById('particles');
 if (canvas) {
