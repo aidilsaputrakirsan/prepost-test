@@ -71,9 +71,26 @@ const currentQuestionEl = document.getElementById('currentQuestion');
 const totalQuestionsEl = document.getElementById('totalQuestions');
 const progressFill = document.querySelector('.progress-fill');
 
-// Theme Toggle
-const themeToggle = document.getElementById('themeToggle');
 // Ganti kedua implementasi tema dengan versi yang sudah terkonsolidasi ini
+// -------------------------
+// Global Variables
+// -------------------------
+let currentUser = {};   // Data pengguna saat ini
+let currentAvatarSeed = 1;
+let questions = [];     // Data soal dari backend
+let currentQuestionIndex = 0;
+const timerDuration = 15;
+let timerInterval;
+let totalScore = 0;     // Akumulasi skor peserta
+
+// Admin variables
+let isAdmin = false;
+let participantsList = [];
+let quizState = "waiting"; // waiting, started, finished
+let pollingInterval;
+
+// -------------------------
+// Backend Integration
 
 // Fungsi untuk mengatur tema
 function setTheme(isLight) {
@@ -103,27 +120,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
-// -------------------------
-// Global Variables
-// -------------------------
-let currentUser = {};   // Data pengguna saat ini
-let currentAvatarSeed = 1;
-let questions = [];     // Data soal dari backend
-let currentQuestionIndex = 0;
-const timerDuration = 15;
-let timerInterval;
-let totalScore = 0;     // Akumulasi skor peserta
-
-// Admin variables
-let isAdmin = false;
-let participantsList = [];
-let quizState = "waiting"; // waiting, started, finished
-let pollingInterval;
-
-// -------------------------
-// Backend Integration
-
-
 // -------------------------
 
 // Fungsi untuk login user via backend
