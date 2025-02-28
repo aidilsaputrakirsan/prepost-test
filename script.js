@@ -67,7 +67,7 @@ const totalQuestionsEl = document.getElementById('totalQuestions');
 const progressFill = document.querySelector('.progress-fill');
 
 // Ganti dengan URL backend (Google Apps Script) terbaru
-const backendUrl = 'https://script.google.com/macros/s/AKfycbx-P6fLDmzeJq9Pa3yFYWNeh9bNI7oMgSyx59ZVL_Sbv7yrKolmXILd1KM22LiLNSNk/exec';
+const backendUrl = 'https://script.google.com/macros/s/AKfycbxnhvMbJom8t1Gu-Ibe8boBhCw0RQXttdd_-LQYJuwyxX-FMdWAg75HdEomh7xoQmNX/exec';
 
 // -------------------------
 // Global Variables
@@ -351,7 +351,23 @@ function endQuiz() {
       
       // Hitung statistik hasil
       const totalSoal = questions.length;
-      const jawabanBenar = Math.round(totalScore / 1000); // Perkiraan jumlah benar (1000 poin per soal benar)
+      // Sekarang skor jawaban benar adalah 10 poin (plus bonus)
+      // Kita perlu menghitung berapa jawaban benar berdasarkan total skor
+      // Ambil nilai dasar yaitu 10 untuk setiap jawaban benar
+      let jawabanBenar = 0;
+      for (let i = 0; i < totalSoal; i++) {
+        const questionScore = totalScore / totalSoal; // Perkiraan skor per soal
+        if (questionScore >= 10) { // Jika skor minimal 10, berarti jawaban benar
+          jawabanBenar++;
+        }
+      }
+      
+      // Cara alternatif: perkirakan jumlah benar dengan membagi total skor dengan perkiraan nilai per soal benar (10 + bonus rata-rata)
+      // Bonus rata-rata sekitar 2-3 poin, jadi perkiraan nilai per soal benar sekitar 12-13 poin
+      const estimatedCorrect = Math.round(totalScore / 13);
+      
+      // Gunakan nilai yang lebih masuk akal (tidak melebihi total soal)
+      jawabanBenar = Math.min(Math.max(estimatedCorrect, 0), totalSoal);
       
       document.getElementById("totalCorrect").textContent = jawabanBenar;
       document.getElementById("totalIncorrect").textContent = totalSoal - jawabanBenar;
