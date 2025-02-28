@@ -93,6 +93,33 @@ let pollingInterval;
 
 // -------------------------
 // Backend Integration
+// Fungsi untuk mengatur tema sesuai toggle
+document.addEventListener('DOMContentLoaded', function() {
+  // Cek tema yang tersimpan di localStorage
+  const savedTheme = localStorage.getItem('theme');
+  
+  // Set tema awal berdasarkan localStorage
+  if (savedTheme === 'light') {
+    document.body.classList.add('light-theme');
+    if (themeToggle) themeToggle.checked = true;
+  }
+  
+  // Event listener untuk toggle tema
+  if (themeToggle) {
+    themeToggle.addEventListener('change', function() {
+      if (this.checked) {
+        // Light theme
+        document.body.classList.add('light-theme');
+        localStorage.setItem('theme', 'light');
+      } else {
+        // Dark theme
+        document.body.classList.remove('light-theme');
+        localStorage.setItem('theme', 'dark');
+      }
+    });
+  }
+});
+
 // -------------------------
 
 // Fungsi untuk login user via backend
