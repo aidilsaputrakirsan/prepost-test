@@ -1,8 +1,3 @@
-/* script.js */
-
-// Ganti dengan URL backend (Google Apps Script) terbaru
-const backendUrl = 'https://script.google.com/macros/s/AKfycbx-P6fLDmzeJq9Pa3yFYWNeh9bNI7oMgSyx59ZVL_Sbv7yrKolmXILd1KM22LiLNSNk/exec';
-
 // -------------------------
 // Page Elements
 // -------------------------
@@ -71,8 +66,11 @@ const currentQuestionEl = document.getElementById('currentQuestion');
 const totalQuestionsEl = document.getElementById('totalQuestions');
 const progressFill = document.querySelector('.progress-fill');
 
-// Theme Toggle Element
-const themeToggle = document.getElementById('themeToggle');
+// Theme Toggle Element - Simpan referensinya setelah DOM sudah siap
+let themeToggle;
+
+// Ganti dengan URL backend (Google Apps Script) terbaru
+const backendUrl = 'https://script.google.com/macros/s/AKfycbx-P6fLDmzeJq9Pa3yFYWNeh9bNI7oMgSyx59ZVL_Sbv7yrKolmXILd1KM22LiLNSNk/exec';
 
 // -------------------------
 // Global Variables
@@ -95,32 +93,43 @@ let pollingInterval;
 // Theme Functions
 // -------------------------
 
-// Fungsi untuk mengatur tema
-function setTheme(isLight) {
-  if (isLight) {
-    document.body.classList.add('light-theme');
-    localStorage.setItem('theme', 'light');
-    if (themeToggle) themeToggle.checked = true;
-  } else {
-    document.body.classList.remove('light-theme');
-    localStorage.setItem('theme', 'dark');
-    if (themeToggle) themeToggle.checked = false;
-  }
-}
-
-// Gunakan load event (bukan DOMContentLoaded) untuk memastikan elemen sudah ada
-window.addEventListener('load', function() {
-  // Cek preferensi tema yang tersimpan
-  const savedTheme = localStorage.getItem('theme');
+// Tunggu hingga DOM benar-benar dimuat
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM fully loaded');
   
-  // Terapkan tema yang tersimpan atau default ke dark
-  setTheme(savedTheme === 'light');
+  // Ambil referensi ke toggle tema
+  themeToggle = document.getElementById('themeToggle');
+  console.log('Theme toggle element:', themeToggle);
   
-  // Tambahkan event listener untuk toggle tema
   if (themeToggle) {
+    // Cek preferensi tema yang tersimpan
+    const savedTheme = localStorage.getItem('theme');
+    console.log('Saved theme:', savedTheme);
+    
+    // Terapkan tema yang tersimpan
+    if (savedTheme === 'light') {
+      document.body.classList.add('light-theme');
+      themeToggle.checked = true;
+      console.log('Applied light theme');
+    }
+    
+    // Tambahkan event listener untuk toggle tema
     themeToggle.addEventListener('change', function() {
-      setTheme(this.checked);
+      console.log('Toggle changed, checked:', this.checked);
+      if (this.checked) {
+        // Light theme
+        document.body.classList.add('light-theme');
+        localStorage.setItem('theme', 'light');
+        console.log('Switched to light theme');
+      } else {
+        // Dark theme
+        document.body.classList.remove('light-theme');
+        localStorage.setItem('theme', 'dark');
+        console.log('Switched to dark theme');
+      }
     });
+  } else {
+    console.warn('Theme toggle element not found');
   }
 });
 
