@@ -1,35 +1,20 @@
 /* Modern Quiz App Styling */
 
 :root {
-  /* Light theme */
-  --light-bg: #f4f7fc;
-  --light-card-bg: #ffffff;
-  --light-text: #15192c;
-  --light-text-secondary: #646e82;
-  --light-border: #e5e9f2;
-  --light-input-bg: #f4f7fc;
-  --light-btn-primary: #5e60ce;
-  --light-btn-primary-hover: #4e54c8;
-  --light-btn-secondary: #e9ecef;
-  --light-btn-secondary-hover: #dee2e6;
-  --light-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
-  --light-highlight: #6c63ff;
-  --light-timer-bg: #f4f7fc;
-  
-  /* Dark theme */
-  --dark-bg: #0d1117;
-  --dark-card-bg: #161b22;
-  --dark-text: #e6edf3;
-  --dark-text-secondary: #8b949e;
-  --dark-border: #30363d;
-  --dark-input-bg: #0d1117;
-  --dark-btn-primary: #7c73e6;
-  --dark-btn-primary-hover: #6c63ff;
-  --dark-btn-secondary: #21262d;
-  --dark-btn-secondary-hover: #30363d;
-  --dark-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-  --dark-highlight: #6c63ff;
-  --dark-timer-bg: #0d1117;
+  /* Dark theme (now the only theme) */
+  --bg-color: #0d1117;
+  --card-bg: #161b22;
+  --text-color: #e6edf3;
+  --text-secondary: #8b949e;
+  --border-color: #30363d;
+  --input-bg: #0d1117;
+  --btn-primary: #7c73e6;
+  --btn-primary-hover: #6c63ff;
+  --btn-secondary: #21262d;
+  --btn-secondary-hover: #30363d;
+  --box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  --highlight-color: #6c63ff;
+  --timer-bg: #0d1117;
   
   /* Common theme */
   --correct: #40c057;
@@ -38,31 +23,8 @@
   --info: #339af0;
   
   /* RGB Variables for Backgrounds */
-  --light-bg-rgb: 244, 247, 252;
-  --light-card-bg-rgb: 255, 255, 255;
-  
-  /* Dark theme */
-  --dark-bg-rgb: 13, 17, 23;
-  --dark-card-bg-rgb: 22, 27, 34;
-  
-  /* Applied theme (initial is dark) */
-  --bg-color: var(--dark-bg);
-  --card-bg: var(--dark-card-bg);
-  --text-color: var(--dark-text);
-  --text-secondary: var(--dark-text-secondary);
-  --border-color: var(--dark-border);
-  --input-bg: var(--dark-input-bg);
-  --btn-primary: var(--dark-btn-primary);
-  --btn-primary-hover: var(--dark-btn-primary-hover);
-  --btn-secondary: var(--dark-btn-secondary);
-  --btn-secondary-hover: var(--dark-btn-secondary-hover);
-  --box-shadow: var(--dark-shadow);
-  --highlight-color: var(--dark-highlight);
-  --timer-bg: var(--dark-timer-bg);
-  
-  /* Applied RGB variables */
-  --bg-color-rgb: var(--dark-bg-rgb);
-  --card-bg-rgb: var(--dark-card-bg-rgb);
+  --bg-color-rgb: 13, 17, 23;
+  --card-bg-rgb: 22, 27, 34;
   
   /* Gradient Colors */
   --gradient-primary: linear-gradient(135deg, #6c63ff, #a86cff);
@@ -83,38 +45,6 @@
   --transition-slow: 0.5s;
 }
 
-/* Apply light theme when .light-theme class is added to body */
-body.light-theme {
-  --bg-color: var(--light-bg);
-  --card-bg: var(--light-card-bg);
-  --text-color: var(--light-text);
-  --text-secondary: var(--light-text-secondary);
-  --border-color: var(--light-border);
-  --input-bg: var(--light-input-bg);
-  --btn-primary: var(--light-btn-primary);
-  --btn-primary-hover: var(--light-btn-primary-hover);
-  --btn-secondary: var(--light-btn-secondary);
-  --btn-secondary-hover: var(--light-btn-secondary-hover);
-  --box-shadow: var(--light-shadow);
-  --highlight-color: var(--light-highlight);
-  --timer-bg: var(--light-timer-bg);
-  --bg-color-rgb: var(--light-bg-rgb);
-  --card-bg-rgb: var(--light-card-bg-rgb);
-}
-
-/* Tambahkan ini ke CSS Anda untuk debugging */
-body.light-theme::after {
-  content: "Tema terang aktif";
-  position: fixed;
-  bottom: 10px;
-  right: 10px;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 5px 10px;
-  border-radius: 5px;
-  font-size: 12px;
-  z-index: 9999;
-}
 /* Global Reset */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -169,79 +99,6 @@ body {
   width: 100%;
   height: 100%;
   z-index: -1;
-}
-
-/* Theme Switch */
-.theme-switch {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  display: flex;
-  align-items: center;
-  z-index: 10;
-  background: var(--card-bg);
-  padding: 5px 10px;
-  border-radius: 20px;
-  box-shadow: var(--box-shadow);
-}
-
-.theme-switch i {
-  color: var(--text-secondary);
-  font-size: 14px;
-}
-
-.theme-switch .fa-sun {
-  color: #fcc419;
-}
-
-.theme-switch .fa-moon {
-  color: #6c63ff;
-}
-
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 20px;
-  margin: 0 5px;
-}
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--border-color);
-  transition: .4s;
-  border-radius: 20px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 16px;
-  width: 16px;
-  left: 2px;
-  bottom: 2px;
-  background-color: white;
-  transition: .4s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: var(--highlight-color);
-}
-
-input:checked + .slider:before {
-  transform: translateX(20px);
 }
 
 /* Page Container */

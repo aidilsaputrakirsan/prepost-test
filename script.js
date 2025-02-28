@@ -66,9 +66,6 @@ const currentQuestionEl = document.getElementById('currentQuestion');
 const totalQuestionsEl = document.getElementById('totalQuestions');
 const progressFill = document.querySelector('.progress-fill');
 
-// Theme Toggle Element - Simpan referensinya setelah DOM sudah siap
-let themeToggle;
-
 // Ganti dengan URL backend (Google Apps Script) terbaru
 const backendUrl = 'https://script.google.com/macros/s/AKfycbx-P6fLDmzeJq9Pa3yFYWNeh9bNI7oMgSyx59ZVL_Sbv7yrKolmXILd1KM22LiLNSNk/exec';
 
@@ -88,58 +85,6 @@ let isAdmin = false;
 let participantsList = [];
 let quizState = "waiting"; // waiting, started, finished
 let pollingInterval;
-
-// -------------------------
-// Theme Functions
-// -------------------------
-
-// Tunggu hingga DOM benar-benar dimuat
-document.addEventListener('DOMContentLoaded', function() {
-  // Tambahkan sedikit penundaan untuk memastikan DOM benar-benar siap
-  setTimeout(function() {
-    console.log('Inisialisasi tema...');
-    
-    // Dapatkan referensi ke toggle
-    themeToggle = document.getElementById('themeToggle');
-    console.log('Elemen toggle ditemukan:', themeToggle);
-    
-    if (!themeToggle) {
-      console.error('Tidak dapat menemukan elemen dengan id "themeToggle"');
-      return; // Keluar jika elemen tidak ditemukan
-    }
-    
-    // Periksa tema yang tersimpan
-    try {
-      const savedTheme = localStorage.getItem('theme');
-      console.log('Tema tersimpan:', savedTheme);
-      
-      if (savedTheme === 'light') {
-        document.body.classList.add('light-theme');
-        themeToggle.checked = true;
-        console.log('Tema terang diterapkan');
-      }
-      
-      // Tambahkan event listener
-      themeToggle.addEventListener('change', function() {
-        console.log('Toggle berubah, checked:', this.checked);
-        
-        if (this.checked) {
-          document.body.classList.add('light-theme');
-          localStorage.setItem('theme', 'light');
-          console.log('Beralih ke tema terang');
-        } else {
-          document.body.classList.remove('light-theme');
-          localStorage.setItem('theme', 'dark');
-          console.log('Beralih ke tema gelap');
-        }
-      });
-      
-      console.log('Event listener tema berhasil ditambahkan');
-    } catch (error) {
-      console.error('Error saat mengatur tema:', error);
-    }
-  }, 100); // Penundaan kecil 100ms
-});
 
 // -------------------------
 // Backend Integration
