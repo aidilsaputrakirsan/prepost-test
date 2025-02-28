@@ -73,7 +73,36 @@ const progressFill = document.querySelector('.progress-fill');
 
 // Theme Toggle
 const themeToggle = document.getElementById('themeToggle');
+// Ganti kedua implementasi tema dengan versi yang sudah terkonsolidasi ini
 
+// Fungsi untuk mengatur tema
+function setTheme(isLight) {
+  if (isLight) {
+    document.body.classList.add('light-theme');
+    localStorage.setItem('theme', 'light');
+    if (themeToggle) themeToggle.checked = true;
+  } else {
+    document.body.classList.remove('light-theme');
+    localStorage.setItem('theme', 'dark');
+    if (themeToggle) themeToggle.checked = false;
+  }
+}
+
+// Inisialisasi tema saat dokumen dimuat
+document.addEventListener('DOMContentLoaded', function() {
+  // Cek preferensi tema yang tersimpan
+  const savedTheme = localStorage.getItem('theme');
+  
+  // Terapkan tema yang tersimpan atau default ke dark
+  setTheme(savedTheme === 'light');
+  
+  // Tambahkan event listener untuk toggle tema
+  if (themeToggle) {
+    themeToggle.addEventListener('change', function() {
+      setTheme(this.checked);
+    });
+  }
+});
 // -------------------------
 // Global Variables
 // -------------------------
@@ -93,32 +122,7 @@ let pollingInterval;
 
 // -------------------------
 // Backend Integration
-// Fungsi untuk mengatur tema sesuai toggle
-document.addEventListener('DOMContentLoaded', function() {
-  // Cek tema yang tersimpan di localStorage
-  const savedTheme = localStorage.getItem('theme');
-  
-  // Set tema awal berdasarkan localStorage
-  if (savedTheme === 'light') {
-    document.body.classList.add('light-theme');
-    if (themeToggle) themeToggle.checked = true;
-  }
-  
-  // Event listener untuk toggle tema
-  if (themeToggle) {
-    themeToggle.addEventListener('change', function() {
-      if (this.checked) {
-        // Light theme
-        document.body.classList.add('light-theme');
-        localStorage.setItem('theme', 'light');
-      } else {
-        // Dark theme
-        document.body.classList.remove('light-theme');
-        localStorage.setItem('theme', 'dark');
-      }
-    });
-  }
-});
+
 
 // -------------------------
 
