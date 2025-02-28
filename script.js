@@ -67,7 +67,7 @@ const totalQuestionsEl = document.getElementById('totalQuestions');
 const progressFill = document.querySelector('.progress-fill');
 
 // Ganti dengan URL backend (Google Apps Script) terbaru
-const backendUrl = 'https://script.google.com/macros/s/AKfycby2Luz7K9VqHwe-uZeGiuKaC-6tNa4YDjvLPG2naDFw2WMDJ2Za5fFCwWc0-qfzapm1/exec';
+const backendUrl = 'https://script.google.com/macros/s/AKfycbwVUy3ExmLe0xgU1IxIA1qcGsVeGD8Pnw3zemZW9bz4fXNQ4WruEZjJQiiPRugqEc5b/exec';
 
 // -------------------------
 // Global Variables
@@ -339,51 +339,75 @@ function endQuiz() {
   })
     .then(response => response.json())
     .catch(err => {
-      console.error(err);
-      // Lanjutkan meskipun ada error
+      console.error("Error updating status:", err);
     })
     .finally(() => {
-      // Perlu selalu dijalankan, terlepas dari hasil fetch
+      console.log("Mencoba mendapatkan statistik dari server...");
       
-      // Ambil statistik jawaban dari pertanyaan yang sudah dijawab
-      let correctAnswers = 0;
-      let totalAnswered = currentQuestionIndex;
-      let totalTimeUsed = 0;
-      
-      // Dapatkan informasi dari backend untuk hasil yang lebih akurat
+      // Ambil statistik yang akurat dari server
       fetch(backendUrl, {
         method: 'POST',
         body: JSON.stringify({
-          action: 'getUserResults',
+          action: 'getStatistics',
           userId: currentUser.id
         })
       })
         .then(response => response.json())
         .then(data => {
-          if (data.status === 'success' && data.results) {
-            // Gunakan data dari server jika tersedia
-            correctAnswers = data.results.correctAnswers || 0;
-            totalTimeUsed = data.results.totalTime || 0;
-            
-            updateFinalUI(correctAnswers, totalAnswered, totalTimeUsed);
+          if (data.status === 'success' && data.statistics) {
+            // Gunakan data dari server
+            displayResults(data.statistics);
           } else {
-            // Jika tidak ada data dari server, gunakan estimasi berdasarkan total skor
-            // Dengan asumsi 10 poin per jawaban benar
-            correctAnswers = Math.floor(totalScore / 10);
-            totalTimeUsed = totalAnswered * 7; // estimasi 7 detik per soal
-            
-            updateFinalUI(correctAnswers, totalAnswered, totalTimeUsed);
+            console.warn("Tidak bisa mendapatkan statistik, menggunakan perhitungan lokal");
+            // Buat perhitungan sederhana jika tidak berhasil mendapatkan data
+            const correctAnswers = Math.floor(totalScore / 10);
+            const statistics = {
+              totalQuestions: questions.length,
+              correctAnswers: correctAnswers,
+              incorrectAnswers: questions.length - correctAnswers,
+              totalScore: totalScore
+            };
+            displayResults(statistics);
           }
         })
         .catch(err => {
-          console.error("Error getting user results:", err);
-          // Fallback jika gagal
-          correctAnswers = Math.floor(totalScore / 10);
-          totalTimeUsed = totalAnswered * 7;
-          
-          updateFinalUI(correctAnswers, totalAnswered, totalTimeUsed);
+          console.error("Error getting statistics:", err);
+          // Fallback jika gagal mendapatkan data
+          const correctAnswers = Math.floor(totalScore / 10);
+          const statistics = {
+            totalQuestions: questions.length,
+            correctAnswers: correctAnswers,
+            incorrectAnswers: questions.length - correctAnswers,
+            totalScore: totalScore
+          };
+          displayResults(statistics);
         });
     });
+}
+
+// Tampilkan hasil di UI
+function displayResults(statistics) {
+  // Tampilkan halaman hasil
+  quizPage.classList.add("hidden");
+  finalScorePage.classList.remove("hidden");
+  
+  // Tampilkan skor total
+  document.getElementById("finalScore").textContent = statistics.totalScore;
+  
+  // Tampilkan jawaban benar dan salah
+  document.getElementById("totalCorrect").textContent = statistics.correctAnswers;
+  document.getElementById("totalIncorrect").textContent = statistics.incorrectAnswers;
+  
+  // Tampilkan waktu rata-rata (default 7s jika tidak tersedia)
+  const avgTime = statistics.avgTime || "7.0";
+  document.getElementById("avgTime").textContent = avgTime + "s";
+  
+  // Tampilkan konfeti
+  if (typeof confetti !== "undefined") {
+    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+  }
+  
+  console.log("Hasil quiz:", statistics);
 }
 
 // Fungsi helper untuk update UI hasil akhir
