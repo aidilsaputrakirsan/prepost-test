@@ -67,7 +67,7 @@ const totalQuestionsEl = document.getElementById('totalQuestions');
 const progressFill = document.querySelector('.progress-fill');
 
 // Ganti dengan URL backend (Google Apps Script) terbaru
-const backendUrl = 'https://script.google.com/macros/s/AKfycbxnhvMbJom8t1Gu-Ibe8boBhCw0RQXttdd_-LQYJuwyxX-FMdWAg75HdEomh7xoQmNX/exec';
+const backendUrl = 'https://script.google.com/macros/s/AKfycbwyfzveId9U1w7PnaiJlWxM2bVskGEC1NWPoQ4X_mIGmxZSRbQ3bmiIqE4lKAc1D9AS/exec';
 
 // -------------------------
 // Global Variables
@@ -344,42 +344,73 @@ function endQuiz() {
     })
     .finally(() => {
       // Perlu selalu dijalankan, terlepas dari hasil fetch
-      // Tampilkan halaman hasil
-      quizPage.classList.add("hidden");
-      finalScorePage.classList.remove("hidden");
-      document.getElementById("finalScore").textContent = totalScore;
       
-      // Hitung statistik hasil
-      const totalSoal = questions.length;
-      // Sekarang skor jawaban benar adalah 10 poin (plus bonus)
-      // Kita perlu menghitung berapa jawaban benar berdasarkan total skor
-      // Ambil nilai dasar yaitu 10 untuk setiap jawaban benar
-      let jawabanBenar = 0;
-      for (let i = 0; i < totalSoal; i++) {
-        const questionScore = totalScore / totalSoal; // Perkiraan skor per soal
-        if (questionScore >= 10) { // Jika skor minimal 10, berarti jawaban benar
-          jawabanBenar++;
-        }
-      }
+      // Ambil statistik jawaban dari pertanyaan yang sudah dijawab
+      let correctAnswers = 0;
+      let totalAnswered = currentQuestionIndex;
+      let totalTimeUsed = 0;
       
-      // Cara alternatif: perkirakan jumlah benar dengan membagi total skor dengan perkiraan nilai per soal benar (10 + bonus rata-rata)
-      // Bonus rata-rata sekitar 2-3 poin, jadi perkiraan nilai per soal benar sekitar 12-13 poin
-      const estimatedCorrect = Math.round(totalScore / 13);
-      
-      // Gunakan nilai yang lebih masuk akal (tidak melebihi total soal)
-      jawabanBenar = Math.min(Math.max(estimatedCorrect, 0), totalSoal);
-      
-      document.getElementById("totalCorrect").textContent = jawabanBenar;
-      document.getElementById("totalIncorrect").textContent = totalSoal - jawabanBenar;
-      
-      // Hitung rata-rata waktu (sekitar 8 detik per soal)
-      document.getElementById("avgTime").textContent = (Math.round((timerDuration - 8) * 10) / 10) + "s";
-      
-      // Tampilkan konfeti
-      if (typeof confetti !== "undefined") {
-        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-      }
+      // Dapatkan informasi dari backend untuk hasil yang lebih akurat
+      fetch(backendUrl, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'getUserResults',
+          userId: currentUser.id
+        })
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success' && data.results) {
+            // Gunakan data dari server jika tersedia
+            correctAnswers = data.results.correctAnswers || 0;
+            totalTimeUsed = data.results.totalTime || 0;
+            
+            updateFinalUI(correctAnswers, totalAnswered, totalTimeUsed);
+          } else {
+            // Jika tidak ada data dari server, gunakan estimasi berdasarkan total skor
+            // Dengan asumsi 10 poin per jawaban benar
+            correctAnswers = Math.floor(totalScore / 10);
+            totalTimeUsed = totalAnswered * 7; // estimasi 7 detik per soal
+            
+            updateFinalUI(correctAnswers, totalAnswered, totalTimeUsed);
+          }
+        })
+        .catch(err => {
+          console.error("Error getting user results:", err);
+          // Fallback jika gagal
+          correctAnswers = Math.floor(totalScore / 10);
+          totalTimeUsed = totalAnswered * 7;
+          
+          updateFinalUI(correctAnswers, totalAnswered, totalTimeUsed);
+        });
     });
+}
+
+// Fungsi helper untuk update UI hasil akhir
+function updateFinalUI(correctAnswers, totalAnswered, totalTimeUsed) {
+  // Tampilkan halaman hasil
+  quizPage.classList.add("hidden");
+  finalScorePage.classList.remove("hidden");
+  
+  // Tampilkan skor total
+  document.getElementById("finalScore").textContent = totalScore;
+  
+  // Hitung statistik hasil
+  const totalSoal = questions.length;
+  const jawabanBenar = Math.min(correctAnswers, totalSoal);
+  const jawabanSalah = totalSoal - jawabanBenar;
+  
+  document.getElementById("totalCorrect").textContent = jawabanBenar;
+  document.getElementById("totalIncorrect").textContent = jawabanSalah;
+  
+  // Hitung rata-rata waktu yang realistis
+  const avgTime = totalAnswered > 0 ? (totalTimeUsed / totalAnswered).toFixed(1) : "0.0";
+  document.getElementById("avgTime").textContent = avgTime + "s";
+  
+  // Tampilkan konfeti
+  if (typeof confetti !== "undefined") {
+    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+  }
 }
 
 // Fungsi untuk reset timer
