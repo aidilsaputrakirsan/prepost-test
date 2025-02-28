@@ -67,7 +67,7 @@ const totalQuestionsEl = document.getElementById('totalQuestions');
 const progressFill = document.querySelector('.progress-fill');
 
 // Ganti dengan URL backend (Google Apps Script) terbaru
-const backendUrl = 'https://script.google.com/macros/s/AKfycbwyfzveId9U1w7PnaiJlWxM2bVskGEC1NWPoQ4X_mIGmxZSRbQ3bmiIqE4lKAc1D9AS/exec';
+const backendUrl = 'https://script.google.com/macros/s/AKfycby2Luz7K9VqHwe-uZeGiuKaC-6tNa4YDjvLPG2naDFw2WMDJ2Za5fFCwWc0-qfzapm1/exec';
 
 // -------------------------
 // Global Variables
