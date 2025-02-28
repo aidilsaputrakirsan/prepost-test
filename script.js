@@ -95,42 +95,50 @@ let pollingInterval;
 
 // Tunggu hingga DOM benar-benar dimuat
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM fully loaded');
-  
-  // Ambil referensi ke toggle tema
-  themeToggle = document.getElementById('themeToggle');
-  console.log('Theme toggle element:', themeToggle);
-  
-  if (themeToggle) {
-    // Cek preferensi tema yang tersimpan
-    const savedTheme = localStorage.getItem('theme');
-    console.log('Saved theme:', savedTheme);
+  // Tambahkan sedikit penundaan untuk memastikan DOM benar-benar siap
+  setTimeout(function() {
+    console.log('Inisialisasi tema...');
     
-    // Terapkan tema yang tersimpan
-    if (savedTheme === 'light') {
-      document.body.classList.add('light-theme');
-      themeToggle.checked = true;
-      console.log('Applied light theme');
+    // Dapatkan referensi ke toggle
+    themeToggle = document.getElementById('themeToggle');
+    console.log('Elemen toggle ditemukan:', themeToggle);
+    
+    if (!themeToggle) {
+      console.error('Tidak dapat menemukan elemen dengan id "themeToggle"');
+      return; // Keluar jika elemen tidak ditemukan
     }
     
-    // Tambahkan event listener untuk toggle tema
-    themeToggle.addEventListener('change', function() {
-      console.log('Toggle changed, checked:', this.checked);
-      if (this.checked) {
-        // Light theme
+    // Periksa tema yang tersimpan
+    try {
+      const savedTheme = localStorage.getItem('theme');
+      console.log('Tema tersimpan:', savedTheme);
+      
+      if (savedTheme === 'light') {
         document.body.classList.add('light-theme');
-        localStorage.setItem('theme', 'light');
-        console.log('Switched to light theme');
-      } else {
-        // Dark theme
-        document.body.classList.remove('light-theme');
-        localStorage.setItem('theme', 'dark');
-        console.log('Switched to dark theme');
+        themeToggle.checked = true;
+        console.log('Tema terang diterapkan');
       }
-    });
-  } else {
-    console.warn('Theme toggle element not found');
-  }
+      
+      // Tambahkan event listener
+      themeToggle.addEventListener('change', function() {
+        console.log('Toggle berubah, checked:', this.checked);
+        
+        if (this.checked) {
+          document.body.classList.add('light-theme');
+          localStorage.setItem('theme', 'light');
+          console.log('Beralih ke tema terang');
+        } else {
+          document.body.classList.remove('light-theme');
+          localStorage.setItem('theme', 'dark');
+          console.log('Beralih ke tema gelap');
+        }
+      });
+      
+      console.log('Event listener tema berhasil ditambahkan');
+    } catch (error) {
+      console.error('Error saat mengatur tema:', error);
+    }
+  }, 100); // Penundaan kecil 100ms
 });
 
 // -------------------------

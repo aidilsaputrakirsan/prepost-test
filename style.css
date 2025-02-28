@@ -102,6 +102,19 @@ body.light-theme {
   --card-bg-rgb: var(--light-card-bg-rgb);
 }
 
+/* Tambahkan ini ke CSS Anda untuk debugging */
+body.light-theme::after {
+  content: "Tema terang aktif";
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  z-index: 9999;
+}
 /* Global Reset */
 *, *::before, *::after {
   box-sizing: border-box;
