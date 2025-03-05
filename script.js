@@ -147,7 +147,7 @@ function loginUser(name, avatarUrl) {
   const loadingIndicator = document.createElement('div');
   loadingIndicator.className = 'loading-indicator';
   loadingIndicator.textContent = 'Connecting...';
-  document.querySelector('#login .panel').appendChild(loadingIndicator);
+  document.querySelector('#login .card-content').appendChild(loadingIndicator);
   
   fetchWithRetry({
     action: 'login',
