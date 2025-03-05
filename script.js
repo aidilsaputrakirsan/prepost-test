@@ -67,7 +67,7 @@ const totalQuestionsEl = document.getElementById('totalQuestions');
 const progressFill = document.querySelector('.progress-fill');
 
 // Ganti dengan URL backend (Google Apps Script) terbaru
-const backendUrl = 'https://script.google.com/macros/s/AKfycbwVUy3ExmLe0xgU1IxIA1qcGsVeGD8Pnw3zemZW9bz4fXNQ4WruEZjJQiiPRugqEc5b/exec';
+const backendUrl = 'https://script.google.com/macros/s/AKfycby1dk98eZTpjCXBiczAB-8aSLLy2Ig3WAv9a4949auag8hPTUFNY6LSxSUVS2TKwfW4/exec';
 
 // -------------------------
 // Global Variables
@@ -85,6 +85,58 @@ let isAdmin = false;
 let participantsList = [];
 let quizState = "waiting"; // waiting, started, finished
 let pollingInterval;
+let lastParticipantsHash = '';
+let retryCount = 0;
+let pollingDelay = 10000; // Mulai dari 10 detik, bukan 3 detik
+
+// Cache variables
+let questionsCache = null;
+let leaderboardCache = null;
+let leaderboardCacheTime = 0;
+
+// -------------------------
+// Networking Utilities
+// -------------------------
+
+// Fungsi fetch dengan retry dan exponential backoff
+function fetchWithRetry(body, maxRetries = 3, initialDelay = 2000) {
+  return new Promise((resolve, reject) => {
+    const attempt = (retryNum) => {
+      fetch(backendUrl, {
+        method: 'POST',
+        body: JSON.stringify(body)
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          // Reset retry counter on success
+          retryCount = 0;
+          resolve(data);
+        })
+        .catch(err => {
+          console.warn(`Attempt ${retryNum + 1} failed:`, err);
+          
+          if (retryNum < maxRetries) {
+            // Exponential backoff with jitter
+            const jitter = Math.random() * 1000;
+            const delay = initialDelay * Math.pow(2, retryNum) + jitter;
+            
+            console.log(`Retrying in ${Math.round(delay / 1000)} seconds...`);
+            setTimeout(() => attempt(retryNum + 1), delay);
+          } else {
+            console.error("Max retries reached:", err);
+            reject(err);
+          }
+        });
+    };
+    
+    attempt(0);
+  });
+}
 
 // -------------------------
 // Backend Integration
@@ -92,22 +144,32 @@ let pollingInterval;
 
 // Fungsi untuk login user via backend
 function loginUser(name, avatarUrl) {
-  fetch(backendUrl, {
-    method: 'POST',
-    body: JSON.stringify({
-      action: 'login',
-      name: name,
-      avatar: avatarUrl
-    })
+  const loadingIndicator = document.createElement('div');
+  loadingIndicator.className = 'loading-indicator';
+  loadingIndicator.textContent = 'Connecting...';
+  document.querySelector('#login .panel').appendChild(loadingIndicator);
+  
+  fetchWithRetry({
+    action: 'login',
+    name: name,
+    avatar: avatarUrl
   })
-    .then(response => response.json())
     .then(data => {
+      loadingIndicator.remove();
+      
       if (data.status === 'success') {
         currentUser = data.user; // { id, name, avatar }
         userNameEl.textContent = currentUser.name;
         userAvatar.src = currentUser.avatar || avatarUrl;
         
-        // Perubahan alur: ke ruang tunggu, bukan langsung quiz
+        // Cache user di localStorage
+        localStorage.setItem('quizUserData', JSON.stringify({
+          id: currentUser.id,
+          name: currentUser.name,
+          avatar: currentUser.avatar || avatarUrl
+        }));
+        
+        // Perubahan alur: ke ruang tunggu
         loginPage.classList.add('hidden');
         
         // Update waiting room UI
@@ -124,21 +186,38 @@ function loginUser(name, avatarUrl) {
       }
     })
     .catch(err => {
+      loadingIndicator.remove();
       console.error(err);
-      alert("Terjadi kesalahan koneksi saat login.");
+      alert("Terjadi kesalahan koneksi saat login. Silakan coba lagi.");
     });
 }
 
 // Fungsi untuk mengambil soal dari backend (Spreadsheet)
 function loadQuizData(callback) {
-  fetch(backendUrl, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'getQuestions' })
-  })
-    .then(response => response.json())
+  // Gunakan cache jika tersedia
+  if (questionsCache) {
+    console.log("Using cached questions data");
+    questions = questionsCache;
+    totalQuestionsEl.textContent = questions.length;
+    if (questions.length > 0) {
+      callback();
+      return;
+    }
+  }
+  
+  const loadingIndicator = document.createElement('div');
+  loadingIndicator.className = 'loading-indicator';
+  loadingIndicator.textContent = 'Memuat soal...';
+  waitingRoomPage.appendChild(loadingIndicator);
+  
+  fetchWithRetry({ action: 'getQuestions' })
     .then(data => {
+      loadingIndicator.remove();
+      
       if (data.status === 'success') {
         questions = data.questions;
+        questionsCache = data.questions; // Cache questions
+        
         totalQuestionsEl.textContent = questions.length;
         if (questions.length > 0) {
           callback();
@@ -150,8 +229,9 @@ function loadQuizData(callback) {
       }
     })
     .catch(err => {
+      loadingIndicator.remove();
       console.error(err);
-      alert("Terjadi kesalahan koneksi saat mengambil soal.");
+      alert("Terjadi kesalahan koneksi saat mengambil soal. Silakan coba lagi.");
     });
 }
 
@@ -161,35 +241,61 @@ function submitAnswer(selectedOption) {
   const currentQ = questions[currentQuestionIndex];
   const timeTaken = timerDuration - parseInt(timeLeftEl.textContent);
   
-  fetch(backendUrl, {
-    method: 'POST',
-    body: JSON.stringify({
-      action: 'submitAnswer',
-      userId: currentUser.id,
-      questionId: currentQ.id,
-      answer: selectedOption,
-      timeTaken: timeTaken,
-      questionNumber: currentQuestionIndex + 1,
-      totalQuestions: questions.length
-    })
+  // Disable all buttons while submitting
+  const optionButtons = document.querySelectorAll('.option-btn');
+  optionButtons.forEach(btn => {
+    btn.disabled = true;
+    if (btn.dataset.option === selectedOption) {
+      btn.classList.add('submitting');
+    }
+  });
+  
+  fetchWithRetry({
+    action: 'submitAnswer',
+    userId: currentUser.id,
+    questionId: currentQ.id,
+    answer: selectedOption,
+    timeTaken: timeTaken,
+    questionNumber: currentQuestionIndex + 1,
+    totalQuestions: questions.length
   })
-    .then(response => response.json())
     .then(data => {
       if (data.status === 'success') {
         // Tambahkan skor dari soal ini ke totalScore
         totalScore += data.score;
         currentQuestionIndex++;
         updateProgress();
+        
+        // Highlight correct/incorrect answer
+        const selectedButton = document.querySelector(`.option-btn[data-option="${selectedOption}"]`);
+        if (selectedButton) {
+          selectedButton.classList.remove('submitting');
+          selectedButton.classList.add(data.isCorrect ? 'correct' : 'incorrect');
+        }
+        
         setTimeout(() => {
           showQuestion();
-        }, 500);
+        }, 1000);
       } else {
         alert("Gagal submit jawaban: " + data.message);
+        optionButtons.forEach(btn => {
+          btn.disabled = false;
+          btn.classList.remove('submitting');
+        });
       }
     })
     .catch(err => {
       console.error(err);
-      alert("Terjadi kesalahan koneksi saat submit jawaban.");
+      alert("Terjadi kesalahan koneksi saat submit jawaban. Mencoba lagi...");
+      
+      // Re-enable buttons
+      optionButtons.forEach(btn => {
+        btn.disabled = false;
+        btn.classList.remove('submitting');
+      });
+      
+      // Restart timer
+      resetTimer();
     });
 }
 
@@ -200,10 +306,10 @@ function startPollingQuizState() {
     clearInterval(pollingInterval);
   }
   
-  // Polling setiap 3 detik
+  // Polling dengan interval adaptif
   pollingInterval = setInterval(() => {
     checkQuizState();
-  }, 3000);
+  }, pollingDelay);
   
   // Check pertama kali
   checkQuizState();
@@ -211,14 +317,17 @@ function startPollingQuizState() {
 
 // Fungsi untuk cek status quiz dari backend
 function checkQuizState() {
-  fetch(backendUrl, {
-    method: 'POST',
-    body: JSON.stringify({
-      action: 'getQuizState',
-      userId: currentUser?.id
-    })
-  })
-    .then(response => response.json())
+  const requestData = {
+    action: 'getQuizState',
+    userId: currentUser?.id
+  };
+  
+  // Jika admin, tambahkan adminKey
+  if (isAdmin && adminKey?.value) {
+    requestData.adminKey = adminKey.value;
+  }
+  
+  fetchWithRetry(requestData)
     .then(data => {
       if (data.status === 'success') {
         quizState = data.state;
@@ -228,9 +337,14 @@ function checkQuizState() {
           updateAdminUI(data);
         }
         
-        // Update daftar peserta di waiting room
+        // Update daftar peserta di waiting room jika ada perubahan data
         if (data.participants && !isAdmin) {
-          updateWaitingParticipants(data.participants);
+          // Gunakan hashing sederhana untuk cek perubahan data
+          const newHash = hashParticipants(data.participants);
+          if (newHash !== lastParticipantsHash) {
+            updateWaitingParticipants(data.participants);
+            lastParticipantsHash = newHash;
+          }
         }
         
         // Jika quiz sudah dimulai dan user bukan admin
@@ -244,22 +358,65 @@ function checkQuizState() {
           // Sembunyikan waiting room
           waitingRoomPage.classList.add('hidden');
         }
+        
+        // Jika berhasil, kurangi polling delay secara bertahap (min 5 detik)
+        if (pollingDelay > 5000) {
+          pollingDelay = Math.max(5000, pollingDelay - 1000);
+        }
       }
     })
     .catch(err => {
       console.error("Error checking quiz state:", err);
+      
+      // Tingkatkan interval polling saat error (max 30 detik)
+      retryCount++;
+      pollingDelay = Math.min(30000, 5000 + (retryCount * 5000));
+      
+      // Update interval dengan delay baru
+      clearInterval(pollingInterval);
+      pollingInterval = setInterval(() => {
+        checkQuizState();
+      }, pollingDelay);
     });
 }
 
 // Fungsi untuk mengambil leaderboard dari backend
 function fetchLeaderboard() {
-  fetch(backendUrl, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'getLeaderboard' })
-  })
-    .then(response => response.json())
+  // Check cache, gunakan jika masih fresh (< 60 detik)
+  const now = Date.now();
+  if (leaderboardCache && (now - leaderboardCacheTime < 60000) && !isAdmin) {
+    console.log("Using cached leaderboard data");
+    populateLeaderboard(leaderboardCache);
+    
+    // Jika panggil dari halaman final score, sembunyikan halaman tersebut
+    if (!finalScorePage.classList.contains('hidden')) {
+      finalScorePage.classList.add("hidden");
+    }
+    
+    leaderboardPage.classList.remove("hidden");
+    return;
+  }
+  
+  // Tampilkan indikator loading
+  const loadingIndicator = document.createElement('div');
+  loadingIndicator.className = 'loading-indicator';
+  loadingIndicator.textContent = 'Memuat leaderboard...';
+  document.body.appendChild(loadingIndicator);
+  
+  const requestData = { action: 'getLeaderboard' };
+  if (currentUser?.id) {
+    requestData.userId = currentUser.id;
+  }
+  
+  fetchWithRetry(requestData)
     .then(data => {
+      loadingIndicator.remove();
+      
       if (data.status === 'success') {
+        // Cache leaderboard data
+        leaderboardCache = data.leaderboard;
+        leaderboardCacheTime = Date.now();
+        
         populateLeaderboard(data.leaderboard);
         
         // Jika panggil dari halaman final score, sembunyikan halaman tersebut
@@ -278,9 +435,15 @@ function fetchLeaderboard() {
       }
     })
     .catch(err => {
+      loadingIndicator.remove();
       console.error(err);
-      alert("Terjadi kesalahan koneksi saat mengambil leaderboard.");
+      alert("Terjadi kesalahan koneksi saat mengambil leaderboard. Silakan coba lagi.");
     });
+}
+
+// Utility function untuk hash array participants (deteksi perubahan)
+function hashParticipants(participants) {
+  return participants.map(p => `${p.id}-${p.status}-${p.progress || 0}`).join('|');
 }
 
 // -------------------------
@@ -328,14 +491,17 @@ function showQuestion() {
 
 // Fungsi untuk mengakhiri quiz
 function endQuiz() {
+  // Show loading indicator
+  const loadingIndicator = document.createElement('div');
+  loadingIndicator.className = 'loading-indicator';
+  loadingIndicator.textContent = 'Menyelesaikan quiz...';
+  quizPage.appendChild(loadingIndicator);
+  
   // Update status user ke 'finished'
-  fetch(backendUrl, {
-    method: 'POST',
-    body: JSON.stringify({
-      action: 'updateUserStatus',
-      userId: currentUser.id,
-      status: 'finished'
-    })
+  fetchWithRetry({
+    action: 'updateUserStatus',
+    userId: currentUser.id,
+    status: 'finished'
   })
     .then(response => response.json())
     .catch(err => {
@@ -345,15 +511,13 @@ function endQuiz() {
       console.log("Mencoba mendapatkan statistik dari server...");
       
       // Ambil statistik yang akurat dari server
-      fetch(backendUrl, {
-        method: 'POST',
-        body: JSON.stringify({
-          action: 'getStatistics',
-          userId: currentUser.id
-        })
+      fetchWithRetry({
+        action: 'getStatistics',
+        userId: currentUser.id
       })
-        .then(response => response.json())
         .then(data => {
+          loadingIndicator.remove();
+          
           if (data.status === 'success' && data.statistics) {
             // Gunakan data dari server
             displayResults(data.statistics);
@@ -371,7 +535,9 @@ function endQuiz() {
           }
         })
         .catch(err => {
+          loadingIndicator.remove();
           console.error("Error getting statistics:", err);
+          
           // Fallback jika gagal mendapatkan data
           const correctAnswers = Math.floor(totalScore / 10);
           const statistics = {
@@ -404,36 +570,30 @@ function displayResults(statistics) {
   
   // Tampilkan konfeti
   if (typeof confetti !== "undefined") {
-    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+    try {
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+    } catch (err) {
+      console.warn("Confetti error:", err);
+      // Load confetti as fallback
+      loadConfetti();
+    }
+  } else {
+    // Load confetti dynamically
+    loadConfetti();
   }
   
   console.log("Hasil quiz:", statistics);
 }
 
-// Fungsi helper untuk update UI hasil akhir
-function updateFinalUI(correctAnswers, totalAnswered, totalTimeUsed) {
-  // Tampilkan halaman hasil
-  quizPage.classList.add("hidden");
-  finalScorePage.classList.remove("hidden");
-  
-  // Tampilkan skor total
-  document.getElementById("finalScore").textContent = totalScore;
-  
-  // Hitung statistik hasil
-  const totalSoal = questions.length;
-  const jawabanBenar = Math.min(correctAnswers, totalSoal);
-  const jawabanSalah = totalSoal - jawabanBenar;
-  
-  document.getElementById("totalCorrect").textContent = jawabanBenar;
-  document.getElementById("totalIncorrect").textContent = jawabanSalah;
-  
-  // Hitung rata-rata waktu yang realistis
-  const avgTime = totalAnswered > 0 ? (totalTimeUsed / totalAnswered).toFixed(1) : "0.0";
-  document.getElementById("avgTime").textContent = avgTime + "s";
-  
-  // Tampilkan konfeti
-  if (typeof confetti !== "undefined") {
-    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+// Fungsi untuk memuat confetti jika tidak tersedia
+function loadConfetti() {
+  if (typeof confetti === "undefined") {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js';
+    script.onload = function() {
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+    };
+    document.head.appendChild(script);
   }
 }
 
@@ -486,7 +646,10 @@ function updateWaitingParticipants(participants) {
   const waitingCount = participants.filter(p => p.status === 'waiting').length;
   waitingStatusText.textContent = `Menunggu admin memulai... (${waitingCount} peserta siap)`;
   
-  if (otherParticipants.length === 0) {
+  // Hanya tampilkan maksimal 10 peserta untuk performa
+  const displayParticipants = otherParticipants.slice(0, 10);
+  
+  if (displayParticipants.length === 0) {
     const emptyEl = document.createElement('div');
     emptyEl.className = 'participant-item';
     emptyEl.textContent = 'Belum ada peserta lain';
@@ -494,8 +657,8 @@ function updateWaitingParticipants(participants) {
     return;
   }
   
-  // Tambahkan semua peserta ke daftar
-  otherParticipants.forEach(participant => {
+  // Tambahkan peserta ke daftar
+  displayParticipants.forEach(participant => {
     const itemEl = document.createElement('div');
     itemEl.className = 'participant-item';
     
@@ -512,6 +675,14 @@ function updateWaitingParticipants(participants) {
     itemEl.appendChild(nameEl);
     waitingParticipantsList.appendChild(itemEl);
   });
+  
+  // Jika ada lebih banyak peserta yang tidak ditampilkan
+  if (otherParticipants.length > 10) {
+    const moreEl = document.createElement('div');
+    moreEl.className = 'participant-item more-participants';
+    moreEl.textContent = `...dan ${otherParticipants.length - 10} peserta lainnya`;
+    waitingParticipantsList.appendChild(moreEl);
+  }
 }
 
 // Update UI admin panel
@@ -540,8 +711,12 @@ function updateAdminUI(data) {
   activeParticipants.textContent = activeCount;
   finishedParticipants.textContent = finishedCount;
   
-  // Update progress list
-  updateAdminProgressList(participants);
+  // Update progress list, hanya jika ada perubahan (menggunakan hash)
+  const newHash = hashParticipants(participants);
+  if (newHash !== lastParticipantsHash) {
+    updateAdminProgressList(participants);
+    lastParticipantsHash = newHash;
+  }
 }
 
 // Update daftar progress peserta di admin panel
@@ -557,8 +732,11 @@ function updateAdminProgressList(participants) {
     return;
   }
   
+  // Tampilkan maksimal 25 peserta sekaligus untuk performa
+  const displayParticipants = participants.slice(0, 25);
+  
   // Tambahkan semua peserta ke daftar
-  participants.forEach(participant => {
+  displayParticipants.forEach(participant => {
     const itemEl = document.createElement('div');
     itemEl.className = 'progress-item';
     
@@ -614,6 +792,14 @@ function updateAdminProgressList(participants) {
     
     adminProgressList.appendChild(itemEl);
   });
+  
+  // Jika ada lebih banyak peserta yang tidak ditampilkan
+  if (participants.length > 25) {
+    const moreEl = document.createElement('div');
+    moreEl.className = 'progress-item more-item';
+    moreEl.textContent = `...dan ${participants.length - 25} peserta lainnya`;
+    adminProgressList.appendChild(moreEl);
+  }
 }
 
 // Fungsi untuk menampilkan data leaderboard
@@ -648,9 +834,12 @@ function populateLeaderboard(leaderboard) {
   // Lalu tampilkan sisanya di tabel
   const tbody = document.querySelector("#leaderboardTable tbody");
   tbody.innerHTML = "";
-  leaderboard.forEach((entry, index) => {
-    // Lewati 3 teratas agar tidak duplikat di tabel
-    if (index < 3) return;
+  
+  // Hanya tampilkan maksimal 20 entri untuk performa
+  const displayLimit = Math.min(leaderboard.length, 20);
+  
+  for (let index = 3; index < displayLimit; index++) {
+    const entry = leaderboard[index];
     const tr = document.createElement("tr");
     const rankTd = document.createElement("td");
     rankTd.textContent = index + 1;
@@ -665,7 +854,18 @@ function populateLeaderboard(leaderboard) {
     tr.appendChild(scoreTd);
     tr.appendChild(timeTd);
     tbody.appendChild(tr);
-  });
+  }
+  
+  // Jika ada lebih banyak peserta yang tidak ditampilkan
+  if (leaderboard.length > displayLimit) {
+    const tr = document.createElement("tr");
+    tr.className = "more-entries";
+    const td = document.createElement("td");
+    td.colSpan = 4;
+    td.textContent = `...dan ${leaderboard.length - displayLimit} peserta lainnya`;
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
   
   // Update share modal jika user menyelesaikan quiz
   if (!isAdmin && currentUser.id) {
@@ -686,48 +886,70 @@ function populateLeaderboard(leaderboard) {
 // UI Effects & Interactions
 // -------------------------
 
-// Particle Effect
+// Particle Effect - Render hanya jika visible untuk efisiensi
 const canvas = document.getElementById('particles');
-if (canvas) {
-  const ctx = canvas.getContext('2d');
-  let particles = [];
-  const particleCount = 80;
+let particlesActive = false;
+let particles = [];
+const particleCount = 40; // Kurangi jumlah partikel
+
+function initParticles() {
+  if (!canvas) return;
   
-  function initParticles() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    particles = [];
-    for (let i = 0; i < particleCount; i++) {
-      particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        size: Math.random() * 3 + 1,
-        speedX: Math.random() * 1 - 0.5,
-        speedY: Math.random() * 1 - 0.5
-      });
-    }
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  particles = [];
+  
+  for (let i = 0; i < particleCount; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      size: Math.random() * 3 + 1,
+      speedX: Math.random() * 1 - 0.5,
+      speedY: Math.random() * 1 - 0.5
+    });
   }
   
-  function animateParticles() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    particles.forEach(p => {
-      p.x += p.speedX;
-      p.y += p.speedY;
-      if (p.x < 0) p.x = canvas.width;
-      if (p.x > canvas.width) p.x = 0;
-      if (p.y < 0) p.y = canvas.height;
-      if (p.y > canvas.height) p.y = 0;
-      ctx.fillStyle = "rgba(255,255,255,0.2)";
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fill();
-    });
+  if (!particlesActive) {
+    particlesActive = true;
+    animateParticles();
+  }
+}
+
+function animateParticles() {
+  if (!canvas || !particlesActive) return;
+  
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  particles.forEach(p => {
+    p.x += p.speedX;
+    p.y += p.speedY;
+    if (p.x < 0) p.x = canvas.width;
+    if (p.x > canvas.width) p.x = 0;
+    if (p.y < 0) p.y = canvas.height;
+    if (p.y > canvas.height) p.y = 0;
+    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  
+  if (particlesActive) {
     requestAnimationFrame(animateParticles);
   }
-  
-  window.addEventListener('resize', initParticles);
-  initParticles();
-  animateParticles();
+}
+
+// Hanya aktifkan particles ketika landing page terlihat
+function toggleParticles() {
+  if (landingPage && !landingPage.classList.contains('hidden')) {
+    if (!particlesActive) {
+      initParticles();
+      particlesActive = true;
+    }
+  } else {
+    particlesActive = false;
+  }
 }
 
 // Avatar Selection
@@ -754,6 +976,35 @@ window.addEventListener('load', () => {
   setTimeout(() => {
     loadingPage.classList.add('hidden');
     landingPage.classList.remove('hidden');
+    toggleParticles();
+    
+    // Coba cek di localStorage jika user sudah login sebelumnya
+    try {
+      const savedUser = localStorage.getItem('quizUserData');
+      if (savedUser) {
+        const userData = JSON.parse(savedUser);
+        
+        // Konfirmasi mau lanjut pakai user yang sama
+        if (confirm(`Lanjutkan sebagai ${userData.name}?`)) {
+          currentUser = userData;
+          userNameEl.textContent = currentUser.name;
+          userAvatar.src = currentUser.avatar;
+          
+          // Update waiting room UI
+          waitingUserAvatar.src = currentUser.avatar;
+          waitingUserName.textContent = currentUser.name;
+          
+          // Langsung ke waiting room
+          landingPage.classList.add('hidden');
+          waitingRoomPage.classList.remove('hidden');
+          
+          // Mulai polling
+          startPollingQuizState();
+        }
+      }
+    } catch (e) {
+      console.warn("Error loading saved user:", e);
+    }
   }, 1500);
 });
 
@@ -761,6 +1012,7 @@ if (btnStart) {
   btnStart.addEventListener('click', () => {
     landingPage.classList.add('hidden');
     loginPage.classList.remove('hidden');
+    toggleParticles();
   });
 }
 
@@ -768,6 +1020,7 @@ if (backToLanding) {
   backToLanding.addEventListener('click', () => {
     loginPage.classList.add('hidden');
     landingPage.classList.remove('hidden');
+    toggleParticles();
   });
 }
 
@@ -778,7 +1031,18 @@ if (btnLogin) {
       alert("Masukkan nama kamu terlebih dahulu.");
       return;
     }
+    if (name.length < 3) {
+      alert("Nama minimal 3 karakter.");
+      return;
+    }
     loginUser(name, selectedAvatar.src);
+  });
+  
+  // Enter key untuk login
+  nameInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      btnLogin.click();
+    }
   });
 }
 
@@ -788,6 +1052,7 @@ if (adminLoginLink) {
     e.preventDefault();
     landingPage.classList.add('hidden');
     adminLoginPage.classList.remove('hidden');
+    toggleParticles();
   });
 }
 
@@ -796,6 +1061,7 @@ if (backToLandingFromAdmin) {
   backToLandingFromAdmin.addEventListener('click', function() {
     adminLoginPage.classList.add('hidden');
     landingPage.classList.remove('hidden');
+    toggleParticles();
   });
 }
 
@@ -808,16 +1074,20 @@ if (btnAdminLogin) {
       return;
     }
     
+    // Tampilkan loading
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'loading-indicator';
+    loadingIndicator.textContent = 'Memeriksa key...';
+    adminLoginPage.appendChild(loadingIndicator);
+    
     // Verifikasi admin key
-    fetch(backendUrl, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'adminLogin',
-        adminKey: key
-      })
+    fetchWithRetry({
+      action: 'adminLogin',
+      adminKey: key
     })
-      .then(response => response.json())
       .then(data => {
+        loadingIndicator.remove();
+        
         if (data.status === 'success') {
           isAdmin = true;
           
@@ -835,6 +1105,7 @@ if (btnAdminLogin) {
         }
       })
       .catch(err => {
+        loadingIndicator.remove();
         console.error(err);
         alert("Terjadi kesalahan koneksi saat login admin.");
       });
@@ -848,6 +1119,7 @@ if (adminLogout) {
     clearInterval(pollingInterval);
     adminPanelPage.classList.add('hidden');
     landingPage.classList.remove('hidden');
+    toggleParticles();
   });
 }
 
@@ -859,31 +1131,36 @@ if (btnStartQuiz) {
       return;
     }
     
-    fetch(backendUrl, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'startQuiz',
-        adminKey: adminKey.value
-      })
+    // Disable button saat proses
+    btnStartQuiz.disabled = true;
+    btnStartQuiz.textContent = "Memulai...";
+    
+    fetchWithRetry({
+      action: 'startQuiz',
+      adminKey: adminKey.value
     })
-      .then(response => response.json())
       .then(data => {
         if (data.status === 'success') {
           // Quiz dimulai, update UI
           quizState = 'started';
           btnStartQuiz.disabled = true;
+          btnStartQuiz.textContent = "Mulai Quiz";
           btnEndQuiz.disabled = false;
           
           // Update status
           quizStatusText.textContent = 'Berjalan';
-          quizStatusIndicator.querySelector('.status-dot').className = 'status-dot active';
+          quizStatusIndicator.querySelector('.status-dot').className = 'status-dot started';
         } else {
           alert("Gagal memulai quiz: " + data.message);
+          btnStartQuiz.disabled = false;
+          btnStartQuiz.textContent = "Mulai Quiz";
         }
       })
       .catch(err => {
         console.error(err);
         alert("Terjadi kesalahan koneksi saat memulai quiz.");
+        btnStartQuiz.disabled = false;
+        btnStartQuiz.textContent = "Mulai Quiz";
       });
   });
 }
@@ -896,31 +1173,36 @@ if (btnEndQuiz) {
       return;
     }
     
-    fetch(backendUrl, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'endQuiz',
-        adminKey: adminKey.value
-      })
+    // Disable button saat proses
+    btnEndQuiz.disabled = true;
+    btnEndQuiz.textContent = "Mengakhiri...";
+    
+    fetchWithRetry({
+      action: 'endQuiz',
+      adminKey: adminKey.value
     })
-      .then(response => response.json())
       .then(data => {
         if (data.status === 'success') {
           // Quiz selesai, update UI
           quizState = 'finished';
           btnStartQuiz.disabled = true;
           btnEndQuiz.disabled = true;
+          btnEndQuiz.textContent = "Akhiri Quiz";
           
           // Update status
           quizStatusText.textContent = 'Selesai';
           quizStatusIndicator.querySelector('.status-dot').className = 'status-dot finished';
         } else {
           alert("Gagal mengakhiri quiz: " + data.message);
+          btnEndQuiz.disabled = false;
+          btnEndQuiz.textContent = "Akhiri Quiz";
         }
       })
       .catch(err => {
         console.error(err);
         alert("Terjadi kesalahan koneksi saat mengakhiri quiz.");
+        btnEndQuiz.disabled = false;
+        btnEndQuiz.textContent = "Akhiri Quiz";
       });
   });
 }
@@ -929,24 +1211,31 @@ if (btnEndQuiz) {
 if (btnResetQuiz) {
   btnResetQuiz.addEventListener('click', function() {
     // Konfirmasi
-    if (!confirm("Yakin ingin mereset quiz? Semua data progress peserta akan dihapus!")) {
+    if (!confirm("AWAS! Yakin ingin mereset quiz? Semua data progress peserta akan dihapus!")) {
       return;
     }
     
-    fetch(backendUrl, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'resetQuiz',
-        adminKey: adminKey.value
-      })
+    // Konfirmasi kedua untuk keamanan
+    if (!confirm("Tindakan ini tidak dapat dibatalkan. Lanjutkan?")) {
+      return;
+    }
+    
+    // Disable button saat proses
+    btnResetQuiz.disabled = true;
+    btnResetQuiz.textContent = "Mereset...";
+    
+    fetchWithRetry({
+      action: 'resetQuiz',
+      adminKey: adminKey.value
     })
-      .then(response => response.json())
       .then(data => {
         if (data.status === 'success') {
           // Quiz direset, update UI
           quizState = 'waiting';
           btnStartQuiz.disabled = false;
           btnEndQuiz.disabled = true;
+          btnResetQuiz.disabled = false;
+          btnResetQuiz.textContent = "Reset Quiz";
           
           // Update status
           quizStatusText.textContent = 'Menunggu';
@@ -959,13 +1248,21 @@ if (btnResetQuiz) {
           
           // Reset progress list
           adminProgressList.innerHTML = '<div class="progress-item">Belum ada peserta</div>';
+          
+          // Reset cache
+          questionsCache = null;
+          leaderboardCache = null;
         } else {
           alert("Gagal mereset quiz: " + data.message);
+          btnResetQuiz.disabled = false;
+          btnResetQuiz.textContent = "Reset Quiz";
         }
       })
       .catch(err => {
         console.error(err);
         alert("Terjadi kesalahan koneksi saat mereset quiz.");
+        btnResetQuiz.disabled = false;
+        btnResetQuiz.textContent = "Reset Quiz";
       });
   });
 }
@@ -1010,7 +1307,10 @@ if (closeShareModal) {
 if (btnCopyLink) {
   btnCopyLink.addEventListener("click", () => {
     navigator.clipboard.writeText(window.location.href);
-    alert("Link berhasil disalin!");
+    btnCopyLink.textContent = "✓ Tersalin!";
+    setTimeout(() => {
+      btnCopyLink.textContent = "Salin Link";
+    }, 2000);
   });
 }
 
@@ -1019,5 +1319,63 @@ window.addEventListener('beforeunload', function() {
   // Hentikan polling
   if (pollingInterval) {
     clearInterval(pollingInterval);
+  }
+  // Hentikan partikel
+  particlesActive = false;
+});
+
+// Tambahkan CSS untuk loading indicator dan animasi
+(function() {
+  const style = document.createElement('style');
+  style.textContent = `
+    .loading-indicator {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 15px 30px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      border-radius: 8px;
+      z-index: 9999;
+      font-weight: bold;
+    }
+    
+    .option-btn.submitting {
+      opacity: 0.7;
+      animation: pulse 1s infinite;
+    }
+    
+    .option-btn.correct {
+      background-color: #28a745 !important;
+      border-color: #28a745 !important;
+      color: white !important;
+    }
+    
+    .option-btn.incorrect {
+      background-color: #dc3545 !important;
+      border-color: #dc3545 !important;
+      color: white !important;
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 0.7; }
+      50% { opacity: 1; }
+      100% { opacity: 0.7; }
+    }
+    
+    .more-participants, .more-item, .more-entries {
+      font-style: italic;
+      color: #777;
+      text-align: center;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+// Inisialisasi avatar pada load
+window.addEventListener('DOMContentLoaded', () => {
+  if (selectedAvatar) {
+    updateAvatar();
   }
 });
