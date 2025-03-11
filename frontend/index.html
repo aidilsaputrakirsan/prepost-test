@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <link rel="icon" href="assets/icon.png" type="image/png">
+  <title>Post-Test Quiz</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- SVG Definitions for Gradients -->
+  <svg width="0" height="0" style="position: absolute;">
+    <defs>
+      <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#6c63ff" />
+        <stop offset="100%" stop-color="#a86cff" />
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <!-- Background effects -->
+  <div class="gradient-bg">
+    <canvas id="particles"></canvas>
+    <div class="noise-overlay"></div>
+  </div>
+  
+  <!-- Loading Screen -->
+  <div id="loading" class="page animate__animated animate__fadeIn">
+    <div class="spinner"></div>
+    <h2>Memuat Quiz...</h2>
+  </div>
+
+  <!-- Halaman Landing -->
+  <div id="landing" class="page hidden animate__animated">
+    <div class="card-container">
+      <div class="card-content">
+        <div class="quiz-icon">
+          <i class="fas fa-brain"></i>
+        </div>
+        <h1>Post-Test <span class="highlight">Quiz</span></h1>
+        <p>Uji pengetahuan dan kecepatanmu dengan quiz interaktif!</p>
+        <button id="btnStart" class="btn btn-primary">
+          <span>Mulai Quiz</span>
+          <i class="fas fa-arrow-right"></i>
+        </button>
+      </div>
+      <div class="decorative-shape"></div>
+    </div>
+  </div>
+  
+  <!-- Halaman Login -->
+  <div id="login" class="page hidden animate__animated">
+    <div class="card-container">
+      <div class="card-content">
+        <div class="back-button" id="backToLanding">
+          <i class="fas fa-arrow-left"></i>
+        </div>
+        <h2>Masukkan Identitas</h2>
+        <div class="avatar-selection">
+          <div class="avatar-preview">
+            <img id="selectedAvatar" src="https://api.dicebear.com/6.x/avataaars/svg?seed=1" alt="Avatar">
+          </div>
+          <div class="avatar-controls">
+            <button id="prevAvatar" class="btn-icon"><i class="fas fa-chevron-left"></i></button>
+            <button id="nextAvatar" class="btn-icon"><i class="fas fa-chevron-right"></i></button>
+          </div>
+        </div>
+        <div class="input-group">
+          <label for="name">Nama</label>
+          <input type="text" id="name" placeholder="Masukkan nama kamu">
+          <i class="fas fa-user input-icon"></i>
+        </div>
+        <button id="btnLogin" class="btn btn-primary">
+          <span>Mulai Quiz</span>
+          <i class="fas fa-play"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Halaman Ruang Tunggu -->
+  <div id="waitingRoom" class="page hidden animate__animated">
+    <div class="card-container">
+      <div class="card-content">
+        <div class="quiz-icon">
+          <i class="fas fa-clock"></i>
+        </div>
+        <h2>Ruang Tunggu</h2>
+        <p>Menunggu admin memulai quiz...</p>
+        
+        <!-- Informasi peserta -->
+        <div class="waiting-user-info">
+          <img id="waitingUserAvatar" src="https://api.dicebear.com/6.x/avataaars/svg?seed=1" alt="Avatar">
+          <span id="waitingUserName">User</span>
+        </div>
+        
+        <!-- Daftar peserta yang menunggu -->
+        <div class="waiting-participants">
+          <h3>Peserta Lain</h3>
+          <div id="waitingParticipantsList" class="participants-list">
+            <!-- Diisi secara dinamis oleh JavaScript -->
+            <div class="participant-item skeleton-loading"></div>
+            <div class="participant-item skeleton-loading"></div>
+            <div class="participant-item skeleton-loading"></div>
+          </div>
+        </div>
+        
+        <!-- Loading indicator -->
+        <div class="waiting-status">
+          <div class="waiting-spinner"></div>
+          <p id="waitingStatusText">Menunggu admin memulai...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Halaman Admin Login -->
+  <div id="adminLogin" class="page hidden animate__animated">
+    <div class="card-container">
+      <div class="card-content">
+        <div class="back-button" id="backToLandingFromAdmin">
+          <i class="fas fa-arrow-left"></i>
+        </div>
+        <div class="quiz-icon">
+          <i class="fas fa-user-shield"></i>
+        </div>
+        <h2>Admin Login</h2>
+        <div class="input-group">
+          <label for="adminKey">Admin Key</label>
+          <input type="password" id="adminKey" placeholder="Masukkan admin key">
+          <i class="fas fa-key input-icon"></i>
+        </div>
+        <button id="btnAdminLogin" class="btn btn-primary">
+          <span>Login Admin</span>
+          <i class="fas fa-sign-in-alt"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Halaman Admin Panel -->
+  <div id="adminPanel" class="page hidden animate__animated">
+    <div class="card-container admin-container">
+      <div class="admin-header">
+        <h2><i class="fas fa-user-shield"></i> Admin Panel</h2>
+        <button id="adminLogout" class="btn-icon">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
+      </div>
+      
+      <div class="admin-quiz-control">
+        <div class="quiz-status-card">
+          <h3>Status Quiz</h3>
+          <div class="status-indicator" id="quizStatusIndicator">
+            <span class="status-dot waiting"></span>
+            <span id="quizStatusText">Menunggu</span>
+          </div>
+          <p id="participantCount">0 peserta menunggu</p>
+        </div>
+        
+        <div class="admin-actions">
+          <button id="btnStartQuiz" class="btn btn-primary">
+            <i class="fas fa-play"></i>
+            <span>Mulai Quiz</span>
+          </button>
+          <button id="btnEndQuiz" class="btn btn-secondary" disabled>
+            <i class="fas fa-stop"></i>
+            <span>Akhiri Quiz</span>
+          </button>
+          <button id="btnResetQuiz" class="btn btn-secondary">
+            <i class="fas fa-redo"></i>
+            <span>Reset Quiz</span>
+          </button>
+        </div>
+      </div>
+      
+      <div class="admin-stats">
+        <h3>Statistik Quiz</h3>
+        <div class="admin-stats-grid">
+          <div class="stat-box">
+            <div class="stat-icon"><i class="fas fa-users"></i></div>
+            <div class="stat-value" id="totalParticipants">0</div>
+            <div class="stat-label">Total Peserta</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
+            <div class="stat-value" id="activeParticipants">0</div>
+            <div class="stat-label">Sedang Mengerjakan</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="stat-value" id="finishedParticipants">0</div>
+            <div class="stat-label">Selesai</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="admin-progress">
+        <h3>Progress Peserta</h3>
+        <div class="admin-progress-list" id="adminProgressList">
+          <!-- Diisi secara dinamis oleh JavaScript -->
+        </div>
+      </div>
+      
+      <div class="admin-actions">
+        <button id="btnAdminLeaderboard" class="btn btn-primary">
+          <i class="fas fa-trophy"></i>
+          <span>Lihat Leaderboard</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Link Admin di halaman landing -->
+  <div class="admin-link">
+    <a href="#" id="adminLoginLink">Admin</a>
+  </div>
+
+  <!-- Halaman Quiz -->
+  <div id="quiz" class="page hidden animate__animated">
+    <div class="card-container">
+      <div class="quiz-header">
+        <div class="quiz-progress">
+          <div class="progress-text">Soal <span id="currentQuestion">1</span>/<span id="totalQuestions">10</span></div>
+          <div class="progress-bar">
+            <div class="progress-fill"></div>
+          </div>
+        </div>
+        <div class="quiz-user">
+          <img id="userAvatar" src="https://api.dicebear.com/6.x/avataaars/svg?seed=1" alt="User Avatar">
+          <span id="userName">User</span>
+        </div>
+      </div>
+      
+      <div id="question-container">
+        <div class="timer-container">
+          <div class="timer-circle">
+            <svg viewBox="0 0 100 100">
+              <circle class="timer-bg" cx="50" cy="50" r="45"></circle>
+              <circle class="timer-progress" cx="50" cy="50" r="45"></circle>
+            </svg>
+            <div class="timer-text"><span id="timeLeft">15</span></div>
+          </div>
+        </div>
+        <div id="question-text" class="question-text animate__animated animate__fadeIn"></div>
+        <div id="options" class="options-container animate__animated animate__fadeIn"></div>
+        <button id="btnNext" class="btn btn-primary btn-next">
+          <span>Berikutnya</span>
+          <i class="fas fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Halaman Result Jawaban -->
+  <div id="answer-result" class="page hidden animate__animated">
+    <div class="card-container result-card">
+      <div class="result-icon" id="resultIcon"></div>
+      <h2 id="resultTitle"></h2>
+      <p id="resultText"></p>
+      <div class="answer-stats">
+        <div class="stat-item">
+          <div class="stat-label">Waktu</div>
+          <div class="stat-value" id="answerTime"></div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Jawaban Benar</div>
+          <div class="stat-value" id="correctAnswer"></div>
+        </div>
+      </div>
+      <button id="btnContinue" class="btn btn-primary">
+        <span>Lanjutkan</span>
+        <i class="fas fa-arrow-right"></i>
+      </button>
+    </div>
+  </div>
+  
+  <!-- Halaman Final Score -->
+  <div id="final-score" class="page hidden animate__animated">
+    <div class="card-container">
+      <div class="confetti" id="confetti"></div>
+      <div class="score-container">
+        <h2>Quiz Selesai!</h2>
+        <div class="score-circle">
+          <svg viewBox="0 0 100 100">
+            <circle class="score-bg" cx="50" cy="50" r="45"></circle>
+            <circle class="score-progress" id="scoreProgress" cx="50" cy="50" r="45"></circle>
+          </svg>
+          <div class="score-text">
+            <span id="finalScore">0</span>
+            <span class="score-label">Skor</span>
+          </div>
+        </div>
+        <div class="score-stats">
+          <div class="stat-item">
+            <i class="fas fa-check-circle"></i>
+            <div class="stat-text">
+              <div class="stat-value" id="totalCorrect">0</div>
+              <div class="stat-label">Benar</div>
+            </div>
+          </div>
+          <div class="stat-item">
+            <i class="fas fa-times-circle"></i>
+            <div class="stat-text">
+              <div class="stat-value" id="totalIncorrect">0</div>
+              <div class="stat-label">Salah</div>
+            </div>
+          </div>
+          <div class="stat-item">
+            <i class="fas fa-clock"></i>
+            <div class="stat-text">
+              <div class="stat-value" id="avgTime">0</div>
+              <div class="stat-label">Rata-rata waktu</div>
+            </div>
+          </div>
+        </div>
+        <button id="btnShowLeaderboard" class="btn btn-primary">
+          <span>Lihat Peringkat</span>
+          <i class="fas fa-trophy"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Halaman Leaderboard -->
+  <div id="leaderboardPage" class="page hidden animate__animated">
+    <div class="card-container">
+      <h2><i class="fas fa-trophy"></i> Leaderboard</h2>
+      
+      <div class="podium-container">
+        <div class="podium-place second-place">
+          <div class="podium-avatar" id="secondPlaceAvatar"></div>
+          <div class="podium-name" id="secondPlaceName">-</div>
+          <div class="podium-score" id="secondPlaceScore">-</div>
+          <div class="podium-base">2</div>
+        </div>
+        <div class="podium-place first-place">
+          <div class="podium-avatar" id="firstPlaceAvatar"></div>
+          <div class="podium-name" id="firstPlaceName">-</div>
+          <div class="podium-score" id="firstPlaceScore">-</div>
+          <div class="podium-base">1</div>
+        </div>
+        <div class="podium-place third-place">
+          <div class="podium-avatar" id="thirdPlaceAvatar"></div>
+          <div class="podium-name" id="thirdPlaceName">-</div>
+          <div class="podium-score" id="thirdPlaceScore">-</div>
+          <div class="podium-base">3</div>
+        </div>
+      </div>
+      
+      <div class="leaderboard-list">
+        <table id="leaderboardTable">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Peserta</th>
+              <th>Skor</th>
+              <th>Waktu</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="action-buttons">
+        <button id="btnShare" class="btn btn-secondary">
+          <i class="fas fa-share-alt"></i>
+          <span>Bagikan</span>
+        </button>
+        <button id="btnRestartFinal" class="btn btn-primary">
+          <i class="fas fa-redo"></i>
+          <span>Main Lagi</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Share Modal -->
+  <div id="shareModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Bagikan Hasil Quiz</h3>
+        <button class="close-modal" id="closeShareModal">×</button>
+      </div>
+      <div class="modal-body">
+        <p>Bagikan hasil quizmu:</p>
+        <div class="share-score-card" id="shareScoreCard">
+          <div class="share-header">
+            <img src="https://api.dicebear.com/6.x/avataaars/svg?seed=1" id="shareAvatar" alt="Avatar">
+            <div class="share-user-info">
+              <div class="share-username" id="shareUsername">Username</div>
+              <div class="share-score" id="shareScore">Score: 0</div>
+            </div>
+          </div>
+          <div class="share-message">
+            Saya baru saja menyelesaikan Post-Test Quiz! Coba kalahkan skor saya!
+          </div>
+        </div>
+        <div class="share-buttons">
+          <button class="btn-share btn-whatsapp">
+            <i class="fab fa-whatsapp"></i>
+            <span>WhatsApp</span>
+          </button>
+          <button class="btn-share btn-telegram">
+            <i class="fab fa-telegram"></i>
+            <span>Telegram</span>
+          </button>
+          <button class="btn-share btn-copy" id="btnCopyLink">
+            <i class="fas fa-link"></i>
+            <span>Copy Link</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Socket.IO Script -->
+  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+  
+  <!-- Application Scripts - Using ES modules -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html> 

@@ -1,0 +1,206 @@
+ /* css/components/admin.css */
+/* Admin Panel */
+.admin-container {
+    max-width: 800px;
+    backdrop-filter: blur(15px);
+  }
+  
+  .admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .admin-quiz-control {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .quiz-status-card {
+    background: rgba(var(--bg-color-rgb), 0.4);
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+  }
+  
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    margin: var(--spacing-md) 0;
+  }
+  
+  .status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: var(--spacing-sm);
+  }
+  
+  .status-dot.waiting {
+    background-color: var(--warning);
+  }
+  
+  .status-dot.started {
+    background-color: var(--info);
+  }
+  
+  .status-dot.finished {
+    background-color: var(--correct);
+  }
+  
+  .admin-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .admin-stats {
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .admin-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+  }
+  
+  .stat-box {
+    background: rgba(var(--bg-color-rgb), 0.4);
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    text-align: center;
+  }
+  
+  .stat-icon {
+    font-size: 1.5rem;
+    color: var(--highlight-color);
+    margin-bottom: var(--spacing-sm);
+  }
+  
+  .admin-progress {
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .admin-progress-list {
+    margin-top: var(--spacing-md);
+    max-height: 300px;
+    overflow-y: auto;
+    border-radius: var(--border-radius);
+    background: rgba(var(--bg-color-rgb), 0.4);
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: var(--spacing-sm);
+  }
+  
+  .progress-item {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .progress-item:last-child {
+    border-bottom: none;
+  }
+  
+  .progress-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    margin-right: var(--spacing-md);
+  }
+  
+  .progress-info {
+    flex: 1;
+  }
+  
+  .progress-name {
+    font-weight: 500;
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .progress-bar-container {
+    width: 100%;
+    height: 10px;
+    background: var(--border-color);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--highlight-color);
+    width: 0%; /* akan diupdate via JavaScript */
+  }
+  
+  .progress-status {
+    display: flex;
+    align-items: center;
+    margin-left: var(--spacing-md);
+  }
+  
+  .progress-status i {
+    margin-right: var(--spacing-xs);
+  }
+  
+  .progress-status.waiting {
+    color: var(--warning);
+  }
+  
+  .progress-status.active {
+    color: var(--info);
+  }
+  
+  .progress-status.finished {
+    color: var(--correct);
+  }
+  
+  .more-item {
+    font-style: italic;
+    color: #777;
+    text-align: center;
+  }
+  
+  /* Admin Link - Super transparent */
+  .admin-link {
+    position: fixed;
+    bottom: 5px;
+    right: 5px;
+    z-index: 10;
+    width: 30px;
+    height: 30px;
+  }
+  
+  .admin-link a {
+    color: transparent;
+    font-size: 8px;
+    text-decoration: none;
+    opacity: 0.01;
+    transition: opacity var(--transition-fast);
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .admin-link a:hover {
+    opacity: 0.05;
+  }
+  
+  /* Sembunyikan link admin saat halaman lain aktif */
+  #waitingRoom:not(.hidden) ~ .admin-link,
+  #quiz:not(.hidden) ~ .admin-link,
+  #final-score:not(.hidden) ~ .admin-link,
+  #leaderboardPage:not(.hidden) ~ .admin-link,
+  #answer-result:not(.hidden) ~ .admin-link {
+    display: none;
+  }
+  

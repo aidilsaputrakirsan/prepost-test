@@ -1,0 +1,54 @@
+/* css/components/loading.css */
+.spinner {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--highlight-color);
+    animation: spin 1s infinite linear;
+    margin: 0 auto var(--spacing-md);
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  .loading-indicator {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 15px 30px;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    border-radius: 8px;
+    z-index: 9999;
+    font-weight: bold;
+  }
+  
+  .waiting-spinner {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 3px solid rgba(108, 99, 255, 0.1);
+    border-top-color: var(--highlight-color);
+    animation: spin 1s infinite linear;
+    margin-bottom: var(--spacing-sm);
+  }
+  
+  /* Skeleton Loading */
+  .skeleton-loading {
+    height: 50px;
+    background: linear-gradient(90deg, 
+      var(--border-color) 25%, 
+      var(--input-bg) 50%, 
+      var(--border-color) 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+  }
+  
+  @keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  } 
