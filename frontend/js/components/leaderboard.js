@@ -213,6 +213,53 @@ class LeaderboardComponent {
   }
 }
 
+// Ensure this function is in your leaderboard.js
+function renderLeaderboardRow(entry, index, isCurrentUser) {
+  const tr = document.createElement("tr");
+  tr.className = isCurrentUser ? "current-user" : "";
+  tr.classList.add(index < 3 ? `rank-${index+1}` : "rank-other");
+  
+  // Rank cell with medal
+  const rankTd = document.createElement("td");
+  rankTd.className = "rank-cell";
+  const rankMedal = document.createElement("div");
+  rankMedal.className = "rank-medal";
+  rankMedal.textContent = index + 1;
+  rankTd.appendChild(rankMedal);
+  
+  // Player cell with avatar
+  const playerTd = document.createElement("td");
+  playerTd.className = "player-cell";
+  const avatar = document.createElement("div");
+  avatar.className = "player-avatar";
+  const img = document.createElement("img");
+  img.src = entry.avatar || "https://api.dicebear.com/6.x/avataaars/svg?seed=1";
+  img.alt = entry.name;
+  avatar.appendChild(img);
+  const name = document.createElement("div");
+  name.className = "player-name";
+  name.textContent = entry.name;
+  playerTd.appendChild(avatar);
+  playerTd.appendChild(name);
+  
+  // Score cell
+  const scoreTd = document.createElement("td");
+  scoreTd.className = "score-cell";
+  scoreTd.textContent = entry.score;
+  
+  // Time cell
+  const timeTd = document.createElement("td");
+  timeTd.className = "time-cell";
+  timeTd.textContent = entry.avgTime || "-";
+  
+  tr.appendChild(rankTd);
+  tr.appendChild(playerTd);
+  tr.appendChild(scoreTd);
+  tr.appendChild(timeTd);
+  
+  return tr;
+}
+
 /**
  * Initialize leaderboard with user and data
  * @param {Object} user - Current user

@@ -1,6 +1,7 @@
  // js/components/results.js
 import api from '../api.js';
 import { showConfetti } from '../utils/animation.js';
+import { updateScoreBadge } from '../utils/scoreBadge.js';
 
 let currentUser;
 let statistics;
@@ -76,7 +77,11 @@ class ResultsComponent {
     if (this.avgTime) {
       this.avgTime.textContent = `${statistics.avgTime || "0.0"}s`;
     }
-    
+    // Then where you update the UI with statistics:
+    if (typeof updateScoreBadge === 'function') {
+      updateScoreBadge(statistics.totalScore, statistics.totalQuestions);
+    }
+
     // Update score circle animation
     const scoreProgress = document.getElementById('scoreProgress');
     if (scoreProgress) {
