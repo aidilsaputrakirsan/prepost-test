@@ -24,26 +24,33 @@ const calculateUserProgress = async (userId) => {
 exports.adminLogin = async (req, res) => {
   try {
     const { adminKey } = req.body;
+    console.log(`Admin login attempt with key: ${adminKey}`);
     
-    // Find quiz state
+    // Find quiz state - add debug logging
     let quizState = await QuizState.findOne();
+    console.log("QuizState found in DB:", quizState ? "YES" : "NO");
+    if (quizState) {
+      console.log("Stored adminKey:", quizState.adminKey);
+    }
     
     // Create default quiz state if not exists
     if (!quizState) {
-      quizState = new QuizState();
+      console.log("Creating new QuizState with fixed adminKey: admin123");
+      quizState = new QuizState({ adminKey: "admin123" });
       await quizState.save();
       
-      return res.status(200).json({
-        status: "error",
-        message: `Admin key belum diatur. Key baru: ${quizState.adminKey}`
-      });
+      console.log("New QuizState created with ID:", quizState._id);
+      
+      // CHANGED: Don't return error, just notify about the new key
+      console.log(`New admin key created: ${quizState.adminKey}`);
     }
     
-    // Verify admin key
+    // Verify admin key - add more explicit message
     if (adminKey !== quizState.adminKey) {
+      console.log(`Admin key mismatch: received "${adminKey}" but expected "${quizState.adminKey}"`);
       return res.status(401).json({
         status: "error",
-        message: "Admin key salah"
+        message: `Admin key salah. Gunakan key: ${quizState.adminKey}`
       });
     }
     

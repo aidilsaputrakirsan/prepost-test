@@ -5,6 +5,8 @@ const http = require('http');
 const dotenv = require('dotenv');
 const path = require('path');
 const socketIO = require('./socket'); // Import our socket module
+// Import models
+const QuizState = require('./models/QuizState');
 
 // Load environment variables
 dotenv.config();
@@ -56,6 +58,15 @@ mongoose.connect(process.env.MONGODB_URI, {
   console.error(err);
 });
 
+// Check for common issues
+if (!process.env.MONGODB_URI) {
+  console.error('❌ MONGODB_URI environment variable is not set');
+  console.error('Make sure you have a .env file with MONGODB_URI defined');
+}
+else {
+  console.log('💡 MONGODB_URI is defined:', process.env.MONGODB_URI.substring(0, 15) + '...');
+}
+
 // MongoDB connection events for debugging
 mongoose.connection.on('connected', () => {
   console.log('Mongoose connected to DB');
@@ -67,6 +78,18 @@ mongoose.connection.on('error', (err) => {
 
 mongoose.connection.on('disconnected', () => {
   console.log('Mongoose disconnected');
+});
+
+mongoose.connection.once('open', async () => {
+  try {
+    const result = await QuizState.updateOne(
+      {}, // Empty filter to match the first document
+      { $set: { adminKey: "admin123" } }
+    );
+    console.log("Updated QuizState admin key to 'admin123':", result);
+  } catch (error) {
+    console.error("Error updating admin key:", error);
+  }
 });
 
 // Start server
