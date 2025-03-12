@@ -10,13 +10,17 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=123">
 </head>
 <body>
   <!-- SVG Definitions for Gradients -->
   <svg width="0" height="0" style="position: absolute;">
     <defs>
       <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#6c63ff" />
+        <stop offset="100%" stop-color="#a86cff" />
+      </linearGradient>
+      <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stop-color="#6c63ff" />
         <stop offset="100%" stop-color="#a86cff" />
       </linearGradient>
@@ -176,6 +180,10 @@
             <i class="fas fa-redo"></i>
             <span>Reset Quiz</span>
           </button>
+          <button id="btnManageQuestions" class="btn btn-secondary">
+            <i class="fas fa-question-circle"></i>
+            <span>Kelola Soal</span>
+          </button>
         </div>
       </div>
       
@@ -328,58 +336,156 @@
   </div>
   
   <!-- Halaman Leaderboard -->
-  <div id="leaderboardPage" class="page hidden animate__animated">
-    <div class="card-container">
-      <h2><i class="fas fa-trophy"></i> Leaderboard</h2>
-      
-      <div class="podium-container">
-        <div class="podium-place second-place">
-          <div class="podium-avatar" id="secondPlaceAvatar"></div>
-          <div class="podium-name" id="secondPlaceName">-</div>
-          <div class="podium-score" id="secondPlaceScore">-</div>
-          <div class="podium-base">2</div>
-        </div>
-        <div class="podium-place first-place">
-          <div class="podium-avatar" id="firstPlaceAvatar"></div>
-          <div class="podium-name" id="firstPlaceName">-</div>
-          <div class="podium-score" id="firstPlaceScore">-</div>
-          <div class="podium-base">1</div>
-        </div>
-        <div class="podium-place third-place">
-          <div class="podium-avatar" id="thirdPlaceAvatar"></div>
-          <div class="podium-name" id="thirdPlaceName">-</div>
-          <div class="podium-score" id="thirdPlaceScore">-</div>
-          <div class="podium-base">3</div>
-        </div>
-      </div>
-      
-      <div class="leaderboard-list">
-        <table id="leaderboardTable">
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Peserta</th>
-              <th>Skor</th>
-              <th>Waktu</th>
-            </tr>
-          </thead>
-          <tbody>
-          </tbody>
-        </table>
-      </div>
-      
-      <div class="action-buttons">
-        <button id="btnShare" class="btn btn-secondary">
-          <i class="fas fa-share-alt"></i>
-          <span>Bagikan</span>
-        </button>
-        <button id="btnRestartFinal" class="btn btn-primary">
-          <i class="fas fa-redo"></i>
-          <span>Main Lagi</span>
-        </button>
-      </div>
+  <!-- Tambahkan definisi gradient untuk score circle -->
+<svg width="0" height="0" style="position: absolute;">
+  <defs>
+    <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6c63ff" />
+      <stop offset="100%" stop-color="#a86cff" />
+    </linearGradient>
+  </defs>
+</svg>
+
+<!-- Pembaruan Podium Container -->
+<div class="podium-container">
+  <div class="podium-place second-place">
+    <div class="podium-award">🥈</div>
+    <div class="podium-avatar" id="secondPlaceAvatar"></div>
+    <div class="podium-name" id="secondPlaceName">-</div>
+    <div class="podium-score" id="secondPlaceScore">-</div>
+    <div class="podium-base">2</div>
+  </div>
+  <div class="podium-place first-place">
+    <div class="podium-award">🏆</div>
+    <div class="podium-avatar" id="firstPlaceAvatar"></div>
+    <div class="podium-name" id="firstPlaceName">-</div>
+    <div class="podium-score" id="firstPlaceScore">-</div>
+    <div class="podium-base">1</div>
+  </div>
+  <div class="podium-place third-place">
+    <div class="podium-award">🥉</div>
+    <div class="podium-avatar" id="thirdPlaceAvatar"></div>
+    <div class="podium-name" id="thirdPlaceName">-</div>
+    <div class="podium-score" id="thirdPlaceScore">-</div>
+    <div class="podium-base">3</div>
+  </div>
+</div>
+
+<!-- Pembaruan Leaderboard Table -->
+<div class="leaderboard-list">
+  <table id="leaderboardTable">
+    <thead>
+      <tr>
+        <th>Rank</th>
+        <th>Peserta</th>
+        <th>Skor</th>
+        <th>Waktu</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Diisi secara dinamis oleh JavaScript -->
+    </tbody>
+  </table>
+</div>
+
+<!-- Tambahkan kode JavaScript untuk memperbarui rendering leaderboard -->
+<script>
+  // Update leaderboard rendering in leaderboard.js
+  function renderLeaderboardRow(entry, index, isCurrentUser) {
+    const tr = document.createElement("tr");
+    tr.className = isCurrentUser ? "current-user" : "";
+    tr.classList.add(index < 3 ? `rank-${index+1}` : "rank-other");
+    
+    // Rank cell with medal
+    const rankTd = document.createElement("td");
+    rankTd.className = "rank-cell";
+    const rankMedal = document.createElement("div");
+    rankMedal.className = "rank-medal";
+    rankMedal.textContent = index + 1;
+    rankTd.appendChild(rankMedal);
+    
+    // Player cell with avatar
+    const playerTd = document.createElement("td");
+    playerTd.className = "player-cell";
+    const avatar = document.createElement("div");
+    avatar.className = "player-avatar";
+    const img = document.createElement("img");
+    img.src = entry.avatar || "https://api.dicebear.com/6.x/avataaars/svg?seed=1";
+    img.alt = entry.name;
+    avatar.appendChild(img);
+    const name = document.createElement("div");
+    name.className = "player-name";
+    name.textContent = entry.name;
+    playerTd.appendChild(avatar);
+    playerTd.appendChild(name);
+    
+    // Score cell
+    const scoreTd = document.createElement("td");
+    scoreTd.className = "score-cell";
+    scoreTd.textContent = entry.score;
+    
+    // Time cell
+    const timeTd = document.createElement("td");
+    timeTd.className = "time-cell";
+    timeTd.textContent = entry.avgTime || "-";
+    
+    tr.appendChild(rankTd);
+    tr.appendChild(playerTd);
+    tr.appendChild(scoreTd);
+    tr.appendChild(timeTd);
+    
+    return tr;
+  }
+</script>
+
+<!-- Final Score dengan Badge -->
+<div class="score-container">
+  <h2>Quiz Selesai!</h2>
+  <div class="score-circle">
+    <svg viewBox="0 0 100 100">
+      <circle class="score-bg" cx="50" cy="50" r="45"></circle>
+      <circle class="score-progress" id="scoreProgress" cx="50" cy="50" r="45"></circle>
+    </svg>
+    <div class="score-text">
+      <span id="finalScore">0</span>
+      <span class="score-label">Skor</span>
+    </div>
+    <div class="score-badge" id="scoreBadge">
+      <i class="fas fa-trophy"></i>
     </div>
   </div>
+  
+  <!-- Script to show appropriate badge based on score -->
+  <script>
+    function updateScoreBadge(score, totalQuestions) {
+      const scoreContainer = document.querySelector('.score-container');
+      const scoreBadge = document.getElementById('scoreBadge');
+      
+      if (scoreContainer && scoreBadge) {
+        // Calculate percentage
+        const maxScore = totalQuestions * 15; // 10 base + 5 max bonus
+        const percentage = (score / maxScore) * 100;
+        
+        // Show badge based on percentage
+        if (percentage >= 90) {
+          scoreBadge.innerHTML = '<i class="fas fa-crown"></i>';
+          scoreBadge.style.background = 'linear-gradient(135deg, #FFD700, #FFC107)';
+          scoreContainer.classList.add('show-badge');
+        } else if (percentage >= 75) {
+          scoreBadge.innerHTML = '<i class="fas fa-medal"></i>';
+          scoreBadge.style.background = 'linear-gradient(135deg, #C0C0C0, #E0E0E0)';
+          scoreContainer.classList.add('show-badge');
+        } else if (percentage >= 60) {
+          scoreBadge.innerHTML = '<i class="fas fa-award"></i>';
+          scoreBadge.style.background = 'linear-gradient(135deg, #CD7F32, #E8A66B)';
+          scoreContainer.classList.add('show-badge');
+        } else {
+          scoreContainer.classList.remove('show-badge');
+        }
+      }
+    }
+  </script>
+</div>
   
   <!-- Share Modal -->
   <div id="shareModal" class="modal hidden">
@@ -424,6 +530,18 @@
   <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
   
   <!-- Application Scripts - Using ES modules -->
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/main.js?v=123"></script>
+
+  <script>
+    // Add event listener for Question Management button
+    document.getElementById('btnManageQuestions')?.addEventListener('click', function() {
+      // Save admin key to localStorage
+      const adminKey = prompt('Konfirmasi Admin Key untuk kelola soal:');
+      if (adminKey) {
+        localStorage.setItem('quizAdminKey', adminKey);
+        window.location.href = '/admin-questions.html';
+      }
+    });
+  </script>
 </body>
 </html> 

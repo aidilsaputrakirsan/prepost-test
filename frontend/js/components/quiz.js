@@ -1,4 +1,4 @@
- // js/components/quiz.js
+// js/components/quiz.js
 import api from '../api.js';
 import config from '../config.js';
 import { showResults } from './results.js';
@@ -114,21 +114,37 @@ class QuizComponent {
     
     if (this.questionTextEl) {
       this.questionTextEl.textContent = currentQ.soal;
+      // Animasi fade-in pertanyaan
+      this.questionTextEl.classList.remove('animate__fadeIn');
+      void this.questionTextEl.offsetWidth; // Trigger reflow
+      this.questionTextEl.classList.add('animate__fadeIn');
     }
     
     if (this.optionsContainer) {
       this.optionsContainer.innerHTML = "";
+      this.optionsContainer.classList.remove('animate__fadeIn');
+      void this.optionsContainer.offsetWidth; // Trigger reflow
+      this.optionsContainer.classList.add('animate__fadeIn');
       
-      ["A", "B", "C", "D"].forEach(option => {
-        if (currentQ["opsi" + option]) {
-          const btn = document.createElement("button");
-          btn.className = "btn btn-primary option-btn";
-          btn.textContent = currentQ["opsi" + option];
-          btn.dataset.option = option;
-          btn.addEventListener("click", () => this.handleOptionSelect(btn));
-          this.optionsContainer.appendChild(btn);
-        }
-      });
+      // Tambahkan delay kecil agar animasi pertanyaan dan opsi berbeda
+      setTimeout(() => {
+        ["A", "B", "C", "D"].forEach(option => {
+          if (currentQ["opsi" + option]) {
+            const btn = document.createElement("button");
+            btn.className = "btn option-btn";
+            btn.textContent = currentQ["opsi" + option];
+            btn.dataset.option = option; // Tambahkan data-option untuk CSS
+            btn.addEventListener("click", () => this.handleOptionSelect(btn));
+            this.optionsContainer.appendChild(btn);
+            
+            // Animasi staggered untuk opsi
+            setTimeout(() => {
+              btn.style.transform = "translateY(0)";
+              btn.style.opacity = "1";
+            }, 100 * ["A", "B", "C", "D"].indexOf(option));
+          }
+        });
+      }, 200);
     }
     
     this.resetTimer();
@@ -143,12 +159,33 @@ class QuizComponent {
     const optionButtons = document.querySelectorAll('.option-btn');
     optionButtons.forEach(btn => btn.disabled = true);
     
-    // Highlight selected button
+    // Highlight selected button with ripple effect
     button.classList.add("selected");
     button.classList.add("submitting");
     
+    // Tambahkan efek klik ripple
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    button.appendChild(ripple);
+    
+    // Get button dimensions for ripple
+    const rect = button.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    
+    // Position the ripple
+    ripple.style.width = ripple.style.height = `${size}px`;
+    ripple.style.left = `${event.clientX - rect.left - size/2}px`;
+    ripple.style.top = `${event.clientY - rect.top - size/2}px`;
+    
     // Submit answer
     this.submitAnswer(button.dataset.option);
+    
+    // Hapus ripple setelah animasi selesai
+    setTimeout(() => {
+      if (ripple && ripple.parentNode) {
+        ripple.parentNode.removeChild(ripple);
+      }
+    }, 500);
   }
   
   /**
@@ -181,6 +218,23 @@ class QuizComponent {
         if (selectedButton) {
           selectedButton.classList.remove('submitting');
           selectedButton.classList.add(response.isCorrect ? 'correct' : 'incorrect');
+          
+          // Add animation for correct/incorrect
+          if (response.isCorrect) {
+            selectedButton.innerHTML += '<span class="answer-icon correct">✓</span>';
+          } else {
+            selectedButton.innerHTML += '<span class="answer-icon incorrect">✗</span>';
+          }
+        }
+        
+        // Show all correct answers if answer was incorrect
+        if (!response.isCorrect) {
+          const correctOption = currentQ.jawaban;
+          const correctButton = document.querySelector(`.option-btn[data-option="${correctOption}"]`);
+          if (correctButton && correctButton !== selectedButton) {
+            correctButton.classList.add('correct');
+            correctButton.innerHTML += '<span class="answer-icon correct">✓</span>';
+          }
         }
         
         // Move to next question after delay
@@ -188,7 +242,7 @@ class QuizComponent {
           currentQuestionIndex++;
           this.updateProgress();
           this.showQuestion();
-        }, 1000);
+        }, 1500); // Increased delay to show the correct answer
       } else {
         throw new Error(response.message || 'Gagal submit jawaban');
       }
@@ -216,6 +270,11 @@ class QuizComponent {
     
     const percent = (currentQuestionIndex / questions.length) * 100;
     this.progressFill.style.width = percent + "%";
+    
+    // Add animation class if not already there
+    if (!this.progressFill.classList.contains('animate-progress')) {
+      this.progressFill.classList.add('animate-progress');
+    }
   }
   
   /**
@@ -235,6 +294,13 @@ class QuizComponent {
       this.timeLeftEl.textContent = timeLeft;
       this.updateTimerCircle(timeLeft);
       
+      // Change color when time is running out
+      if (timeLeft <= 5) {
+        this.timeLeftEl.style.color = '#fa5252';
+      } else {
+        this.timeLeftEl.style.color = '';
+      }
+      
       if (timeLeft <= 0) {
         clearInterval(timerInterval);
         this.submitAnswer(""); // Submit empty answer on timeout
@@ -253,6 +319,13 @@ class QuizComponent {
     const totalLength = 283;
     const offset = totalLength - (timeLeft / this.timerDuration) * totalLength;
     timerProgress.style.strokeDashoffset = offset;
+    
+    // Change color when time is running out
+    if (timeLeft <= 5) {
+      timerProgress.style.stroke = '#fa5252';
+    } else {
+      timerProgress.style.stroke = 'url(#timerGradient)';
+    }
   }
   
   /**
@@ -280,6 +353,14 @@ class QuizComponent {
         
         // Show results page with statistics from server
         showResults(currentUser, response.statistics);
+        
+        // Update score badge if function exists
+        if (typeof updateScoreBadge === 'function') {
+          updateScoreBadge(
+            response.statistics.totalScore, 
+            response.statistics.totalQuestions
+          );
+        }
       } else {
         throw new Error(response.message || 'Gagal mendapatkan statistik');
       }
@@ -302,6 +383,11 @@ class QuizComponent {
       
       // Show results with local stats
       showResults(currentUser, statistics);
+      
+      // Update score badge if function exists
+      if (typeof updateScoreBadge === 'function') {
+        updateScoreBadge(statistics.totalScore, statistics.totalQuestions);
+      }
     } finally {
       loadingIndicator.remove();
     }

@@ -2,9 +2,9 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const http = require('http');
-const socketIo = require('socket.io');
 const dotenv = require('dotenv');
 const path = require('path');
+const socketIO = require('./socket'); // Import our socket module
 
 // Load environment variables
 dotenv.config();
@@ -12,12 +12,9 @@ dotenv.config();
 // Create Express app
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
+
+// Initialize Socket.io
+const io = socketIO.init(server);
 
 // Middleware
 app.use(cors());
@@ -71,25 +68,6 @@ mongoose.connection.on('error', (err) => {
 mongoose.connection.on('disconnected', () => {
   console.log('Mongoose disconnected');
 });
-
-// Socket.io for real-time updates
-io.on('connection', (socket) => {
-  console.log('New client connected:', socket.id);
-  
-  socket.on('joinWaitingRoom', (userId) => {
-    console.log(`User ${userId} joined waiting room`);
-    socket.join('waitingRoom');
-    // Notify waiting room about new participant
-    io.to('waitingRoom').emit('participantJoined', { userId });
-  });
-  
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
-  });
-});
-
-// Export io instance for use in controllers
-module.exports.io = io;
 
 // Start server
 const PORT = process.env.PORT || 5000;

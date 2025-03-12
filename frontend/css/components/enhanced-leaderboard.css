@@ -1,0 +1,388 @@
+/* Enhanced Leaderboard Design */
+
+/* Podium container with 3D effects */
+.podium-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    margin: var(--spacing-lg) 0;
+    height: 260px;
+    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.15));
+    perspective: 800px;
+  }
+  
+  /* Common podium place styling */
+  .podium-place {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 var(--spacing-sm);
+    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-style: preserve-3d;
+  }
+  
+  .podium-place:hover {
+    transform: translateY(-10px);
+  }
+  
+  /* First place styles */
+  .first-place {
+    z-index: 3;
+  }
+  
+  .first-place .podium-avatar {
+    width: 100px;
+    height: 100px;
+    border: 5px solid #FFD700;
+    box-shadow: 0 10px 20px rgba(255, 215, 0, 0.5);
+  }
+  
+  .first-place .podium-base {
+    height: 120px;
+    width: 120px;
+    background: linear-gradient(135deg, #FFD700, #FFC107);
+    box-shadow: 0 10px 20px rgba(255, 215, 0, 0.3);
+    transform: translateZ(20px);
+  }
+  
+  .first-place .podium-base::after {
+    background-color: #e6c200;
+  }
+  
+  .first-place .podium-name {
+    color: #FFD700;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    font-weight: 700;
+  }
+  
+  /* Second place styles */
+  .second-place {
+    z-index: 2;
+  }
+  
+  .second-place .podium-avatar {
+    width: 80px;
+    height: 80px;
+    border: 4px solid #C0C0C0;
+    box-shadow: 0 8px 16px rgba(192, 192, 192, 0.5);
+  }
+  
+  .second-place .podium-base {
+    height: 90px;
+    width: 100px;
+    background: linear-gradient(135deg, #C0C0C0, #E0E0E0);
+    box-shadow: 0 8px 16px rgba(192, 192, 192, 0.3);
+    transform: translateZ(15px);
+  }
+  
+  .second-place .podium-base::after {
+    background-color: #b0b0b0;
+  }
+  
+  .second-place .podium-name {
+    color: #C0C0C0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    font-weight: 600;
+  }
+  
+  /* Third place styles */
+  .third-place {
+    z-index: 1;
+  }
+  
+  .third-place .podium-avatar {
+    width: 70px;
+    height: 70px;
+    border: 3px solid #CD7F32;
+    box-shadow: 0 7px 14px rgba(205, 127, 50, 0.5);
+  }
+  
+  .third-place .podium-base {
+    height: 60px;
+    width: 90px;
+    background: linear-gradient(135deg, #CD7F32, #E8A66B);
+    box-shadow: 0 7px 14px rgba(205, 127, 50, 0.3);
+    transform: translateZ(10px);
+  }
+  
+  .third-place .podium-base::after {
+    background-color: #b5712d;
+  }
+  
+  .third-place .podium-name {
+    color: #CD7F32;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    font-weight: 600;
+  }
+  
+  /* Enhanced podium elements */
+  .podium-avatar {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-bottom: var(--spacing-xs);
+    background: var(--border-color);
+    z-index: 2;
+  }
+  
+  .podium-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: all 0.3s ease;
+  }
+  
+  .podium-avatar:hover img {
+    transform: scale(1.1);
+  }
+  
+  .podium-name {
+    font-size: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100px;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+  
+  .podium-score {
+    font-size: 0.9rem;
+    color: var(--text-color);
+    background: rgba(0, 0, 0, 0.2);
+    padding: 3px 8px;
+    border-radius: 12px;
+    margin-bottom: var(--spacing-sm);
+  }
+  
+  .podium-base {
+    position: relative;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    margin-top: auto;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  }
+  
+  .podium-base::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 5px;
+    background-color: rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Awards and trophies for winners */
+  .podium-award {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 24px;
+    filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.3));
+    animation: float 3s ease-in-out infinite;
+    z-index: 5;
+  }
+  
+  .first-place .podium-award {
+    font-size: 32px;
+    animation-delay: 0s;
+  }
+  
+  .second-place .podium-award {
+    font-size: 28px;
+    animation-delay: 0.5s;
+  }
+  
+  .third-place .podium-award {
+    font-size: 24px;
+    animation-delay: 1s;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-10px); }
+  }
+  
+  /* Leaderboard table improvements */
+  .leaderboard-list {
+    margin: var(--spacing-lg) 0;
+    max-height: 350px;
+    overflow-y: auto;
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(var(--bg-color-rgb), 0.3);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  }
+  
+  .leaderboard-list table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  
+  .leaderboard-list th {
+    position: sticky;
+    top: 0;
+    background-color: rgba(var(--card-bg-rgb), 0.95);
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.85rem;
+    padding: var(--spacing-md) var(--spacing-md);
+    text-align: left;
+    border-bottom: 2px solid var(--border-color);
+    z-index: 10;
+  }
+  
+  .leaderboard-list td {
+    padding: var(--spacing-md);
+    text-align: left;
+    border-bottom: 1px solid rgba(var(--border-color), 0.3);
+    transition: all 0.3s ease;
+  }
+  
+  .leaderboard-list tr {
+    transition: all 0.3s ease;
+  }
+  
+  .leaderboard-list tr:hover td {
+    background-color: rgba(var(--highlight-color-rgb), 0.1);
+  }
+  
+  .leaderboard-list tr.current-user {
+    background-color: rgba(var(--highlight-color-rgb), 0.15);
+  }
+  
+  .leaderboard-list tr.current-user td {
+    font-weight: 600;
+  }
+  
+  /* Rank styling */
+  .rank-cell {
+    position: relative;
+    width: 60px;
+  }
+  
+  .rank-medal {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-weight: 700;
+    margin: 0 auto;
+    color: white;
+  }
+  
+  .rank-1 .rank-medal {
+    background: linear-gradient(135deg, #FFD700, #FFC107);
+    box-shadow: 0 3px 6px rgba(255, 215, 0, 0.3);
+  }
+  
+  .rank-2 .rank-medal {
+    background: linear-gradient(135deg, #C0C0C0, #E0E0E0);
+    box-shadow: 0 3px 6px rgba(192, 192, 192, 0.3);
+  }
+  
+  .rank-3 .rank-medal {
+    background: linear-gradient(135deg, #CD7F32, #E8A66B);
+    box-shadow: 0 3px 6px rgba(205, 127, 50, 0.3);
+  }
+  
+  .rank-other .rank-medal {
+    background: rgba(var(--bg-color-rgb), 0.5);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+  }
+  
+  /* Player cell styling */
+  .player-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .player-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid var(--border-color);
+  }
+  
+  .player-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .player-name {
+    font-weight: 500;
+  }
+  
+  /* Score cell styling */
+  .score-cell {
+    font-weight: 600;
+    color: var(--highlight-color);
+  }
+  
+  /* Time cell styling */
+  .time-cell {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+  
+  /* Shimmering effect for podium winners */
+  .podium-place::before {
+    content: '';
+    position: absolute;
+    top: -40px;
+    left: 0;
+    width: 100%;
+    height: 40px;
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0),
+      rgba(255, 255, 255, 0.3),
+      rgba(255, 255, 255, 0)
+    );
+    animation: shimmer 3s infinite;
+    transform: rotate(30deg);
+    z-index: 1;
+  }
+  
+  @keyframes shimmer {
+    0% { transform: translateY(0) rotate(30deg); opacity: 0; }
+    50% { opacity: 1; }
+    100% { transform: translateY(250px) rotate(30deg); opacity: 0; }
+  }
+  
+  /* Confetti animation improvements */
+  .confetti-piece {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: #ffd300;
+    top: 0;
+    opacity: 0;
+  }
+  
+  @keyframes confetti-fall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+  }

@@ -1,10 +1,10 @@
- // controllers/quizController.js
+// controllers/quizController.js
 const Question = require('../models/Question');
 const Answer = require('../models/Answer');
 const User = require('../models/User');
 const Leaderboard = require('../models/Leaderboard');
 const QuizState = require('../models/QuizState');
-const io = require('../server').io;
+const socketIO = require('../socket'); // Import our socket module
 
 // Get all questions
 exports.getQuestions = async (req, res) => {
@@ -104,7 +104,13 @@ exports.submitAnswer = async (req, res) => {
     await User.findByIdAndUpdate(userId, { status: "active" });
     
     // Notify waiting room about user progress
-    io.to('waitingRoom').emit('userProgress', { userId, status: "active" });
+    try {
+      const io = socketIO.getIO();
+      io.to('waitingRoom').emit('userProgress', { userId, status: "active" });
+    } catch (err) {
+      console.warn('Socket error in submitAnswer:', err.message);
+      // Continue execution even if socket fails
+    }
     
     return res.status(200).json({
       status: "success",
@@ -214,7 +220,12 @@ exports.updateUserStatus = async (req, res) => {
     await User.findByIdAndUpdate(userId, { status });
     
     // Notify waiting room about user status change
-    io.to('waitingRoom').emit('userStatusUpdate', { userId, status });
+    try {
+      const io = socketIO.getIO();
+      io.to('waitingRoom').emit('userStatusUpdate', { userId, status });
+    } catch (err) {
+      console.warn('Socket error in updateUserStatus:', err.message);
+    }
     
     return res.status(200).json({
       status: "success",

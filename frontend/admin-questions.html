@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Admin - Question Management</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .question-form {
+      margin-bottom: 30px;
+      background: rgba(var(--card-bg-rgb), 0.8);
+      border-radius: var(--border-radius);
+      padding: 20px;
+      border: 1px solid var(--border-color);
+    }
+    
+    .question-list {
+      margin-top: 30px;
+    }
+    
+    .question-item {
+      background: rgba(var(--card-bg-rgb), 0.8);
+      border-radius: var(--border-radius);
+      padding: 20px;
+      margin-bottom: 15px;
+      border: 1px solid var(--border-color);
+    }
+    
+    .question-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    
+    .question-options {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin: 15px 0;
+    }
+    
+    .option-item {
+      display: flex;
+      align-items: center;
+      padding: 8px;
+      background: rgba(var(--bg-color-rgb), 0.4);
+      border-radius: 8px;
+    }
+    
+    .option-letter {
+      font-weight: bold;
+      margin-right: 10px;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: var(--border-color);
+    }
+    
+    .option-letter.correct {
+      background: var(--correct);
+      color: white;
+    }
+    
+    .question-actions {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .input-row {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    
+    .input-row .input-group {
+      flex: 1;
+    }
+    
+    .radio-group {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 15px;
+    }
+    
+    .radio-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+    
+    .radio-option input {
+      margin: 0;
+    }
+    
+    .question-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 12px;
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--input-radius);
+      color: var(--text-color);
+      font-family: inherit;
+      resize: vertical;
+    }
+  </style>
+</head>
+<body>
+  <!-- Background effects -->
+  <div class="gradient-bg">
+    <div class="noise-overlay"></div>
+  </div>
+  
+  <!-- Admin Question Management Page -->
+  <div id="questionManagement" class="page">
+    <div class="card-container admin-container">
+      <!-- Header -->
+      <div class="admin-header">
+        <h2><i class="fas fa-question-circle"></i> Manajemen Pertanyaan Quiz</h2>
+        <div class="header-actions">
+          <button id="backToAdminBtn" class="btn-icon">
+            <i class="fas fa-arrow-left"></i>
+          </button>
+          <button id="logoutBtn" class="btn-icon">
+            <i class="fas fa-sign-out-alt"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Admin Key Section -->
+      <div class="admin-key-section">
+        <div class="input-group">
+          <label for="adminKeyInput">Admin Key</label>
+          <input type="password" id="adminKeyInput" placeholder="Masukkan admin key">
+        </div>
+      </div>
+      
+      <!-- Question Form -->
+      <div class="question-form">
+        <h3>Tambah Pertanyaan Baru</h3>
+        
+        <div class="input-group">
+          <label for="questionText">Pertanyaan</label>
+          <textarea id="questionText" class="question-textarea" placeholder="Masukkan pertanyaan quiz"></textarea>
+        </div>
+        
+        <div class="input-row">
+          <div class="input-group">
+            <label for="optionA">Opsi A</label>
+            <input type="text" id="optionA" placeholder="Opsi A">
+          </div>
+          
+          <div class="input-group">
+            <label for="optionB">Opsi B</label>
+            <input type="text" id="optionB" placeholder="Opsi B">
+          </div>
+        </div>
+        
+        <div class="input-row">
+          <div class="input-group">
+            <label for="optionC">Opsi C</label>
+            <input type="text" id="optionC" placeholder="Opsi C">
+          </div>
+          
+          <div class="input-group">
+            <label for="optionD">Opsi D</label>
+            <input type="text" id="optionD" placeholder="Opsi D">
+          </div>
+        </div>
+        
+        <div class="input-group">
+          <label>Jawaban Benar</label>
+          <div class="radio-group">
+            <label class="radio-option">
+              <input type="radio" name="correctAnswer" value="A"> Opsi A
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="correctAnswer" value="B"> Opsi B
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="correctAnswer" value="C"> Opsi C
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="correctAnswer" value="D"> Opsi D
+            </label>
+          </div>
+        </div>
+        
+        <button id="saveQuestionBtn" class="btn btn-primary">
+          <i class="fas fa-save"></i>
+          <span>Simpan Pertanyaan</span>
+        </button>
+      </div>
+      
+      <!-- Question List -->
+      <div class="question-list">
+        <h3>Daftar Pertanyaan <span id="questionCount">(0)</span></h3>
+        <div id="questionListContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Indicator -->
+  <div id="loadingIndicator" class="loading-indicator hidden">
+    <div class="spinner"></div>
+    <div>Memproses...</div>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // DOM Elements
+      const adminKeyInput = document.getElementById('adminKeyInput');
+      const questionText = document.getElementById('questionText');
+      const optionA = document.getElementById('optionA');
+      const optionB = document.getElementById('optionB');
+      const optionC = document.getElementById('optionC');
+      const optionD = document.getElementById('optionD');
+      const saveQuestionBtn = document.getElementById('saveQuestionBtn');
+      const questionListContainer = document.getElementById('questionListContainer');
+      const questionCount = document.getElementById('questionCount');
+      const loadingIndicator = document.getElementById('loadingIndicator');
+      const backToAdminBtn = document.getElementById('backToAdminBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+      
+      // State
+      let questions = [];
+      let editingQuestion = null;
+      
+      // Check if admin key is saved in localStorage
+      const savedAdminKey = localStorage.getItem('quizAdminKey');
+      if (savedAdminKey) {
+        adminKeyInput.value = savedAdminKey;
+        loadQuestions();
+      }
+      
+      // Event Handlers
+      backToAdminBtn.addEventListener('click', () => {
+        window.location.href = '/';
+      });
+      
+      logoutBtn.addEventListener('click', () => {
+        if (confirm('Yakin ingin logout dari admin?')) {
+          localStorage.removeItem('quizAdminKey');
+          window.location.href = '/';
+        }
+      });
+      
+      adminKeyInput.addEventListener('change', () => {
+        const key = adminKeyInput.value.trim();
+        if (key) {
+          localStorage.setItem('quizAdminKey', key);
+          loadQuestions();
+        }
+      });
+      
+      saveQuestionBtn.addEventListener('click', saveQuestion);
+      
+      // Functions
+      async function loadQuestions() {
+        const adminKey = adminKeyInput.value.trim();
+        if (!adminKey) {
+          alert('Masukkan Admin Key terlebih dahulu');
+          return;
+        }
+        
+        showLoading();
+        
+        try {
+          const response = await fetch(`/api/admin/questions?adminKey=${adminKey}`);
+          const data = await response.json();
+          
+          if (data.status === 'success') {
+            questions = data.questions;
+            renderQuestions();
+          } else {
+            throw new Error(data.message);
+          }
+        } catch (error) {
+          console.error('Error loading questions:', error);
+          alert(`Gagal memuat pertanyaan: ${error.message}`);
+        } finally {
+          hideLoading();
+        }
+      }
+      
+      function renderQuestions() {
+        questionListContainer.innerHTML = '';
+        questionCount.textContent = `(${questions.length})`;
+        
+        if (questions.length === 0) {
+          questionListContainer.innerHTML = '<p>Belum ada pertanyaan yang tersimpan</p>';
+          return;
+        }
+        
+        questions.forEach(question => {
+          const questionEl = document.createElement('div');
+          questionEl.className = 'question-item';
+          
+          const header = document.createElement('div');
+          header.className = 'question-header';
+          
+          const title = document.createElement('h4');
+          title.textContent = `Q${question.questionId}: ${question.question}`;
+          
+          const actions = document.createElement('div');
+          actions.className = 'question-actions';
+          
+          const editBtn = document.createElement('button');
+          editBtn.className = 'btn-icon';
+          editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+          editBtn.addEventListener('click', () => editQuestion(question));
+          
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'btn-icon';
+          deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+          deleteBtn.addEventListener('click', () => deleteQuestion(question.questionId));
+          
+          actions.appendChild(editBtn);
+          actions.appendChild(deleteBtn);
+          
+          header.appendChild(title);
+          header.appendChild(actions);
+          
+          const options = document.createElement('div');
+          options.className = 'question-options';
+          
+          const correctAnswer = question.correctAnswer;
+          
+          ['A', 'B', 'C', 'D'].forEach(letter => {
+            const optionEl = document.createElement('div');
+            optionEl.className = 'option-item';
+            
+            const letterEl = document.createElement('span');
+            letterEl.className = `option-letter ${letter === correctAnswer ? 'correct' : ''}`;
+            letterEl.textContent = letter;
+            
+            const textEl = document.createElement('span');
+            textEl.textContent = question[`option${letter}`];
+            
+            optionEl.appendChild(letterEl);
+            optionEl.appendChild(textEl);
+            
+            options.appendChild(optionEl);
+          });
+          
+          questionEl.appendChild(header);
+          questionEl.appendChild(options);
+          
+          questionListContainer.appendChild(questionEl);
+        });
+      }
+      
+      function editQuestion(question) {
+        editingQuestion = question;
+        
+        questionText.value = question.question;
+        optionA.value = question.optionA;
+        optionB.value = question.optionB;
+        optionC.value = question.optionC;
+        optionD.value = question.optionD;
+        
+        const radioBtn = document.querySelector(`input[name="correctAnswer"][value="${question.correctAnswer}"]`);
+        if (radioBtn) {
+          radioBtn.checked = true;
+        }
+        
+        saveQuestionBtn.innerHTML = '<i class="fas fa-save"></i><span>Update Pertanyaan</span>';
+        
+        // Scroll to form
+        document.querySelector('.question-form').scrollIntoView({ behavior: 'smooth' });
+      }
+      
+      async function saveQuestion() {
+        const adminKey = adminKeyInput.value.trim();
+        if (!adminKey) {
+          alert('Masukkan Admin Key terlebih dahulu');
+          return;
+        }
+        
+        // Validate form
+        const question = questionText.value.trim();
+        const optA = optionA.value.trim();
+        const optB = optionB.value.trim();
+        const optC = optionC.value.trim();
+        const optD = optionD.value.trim();
+        const correctAnswer = document.querySelector('input[name="correctAnswer"]:checked')?.value;
+        
+        if (!question || !optA || !optB || !optC || !optD || !correctAnswer) {
+          alert('Semua field harus diisi');
+          return;
+        }
+        
+        showLoading();
+        
+        try {
+          const questionData = {
+            question,
+            optionA: optA,
+            optionB: optB,
+            optionC: optC,
+            optionD: optD,
+            correctAnswer
+          };
+          
+          // If editing, add questionId
+          if (editingQuestion) {
+            questionData.questionId = editingQuestion.questionId;
+          }
+          
+          const response = await fetch('/api/admin/questions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              adminKey,
+              questions: [questionData]
+            })
+          });
+          
+          const data = await response.json();
+          
+          if (data.status === 'success') {
+            // Reset form
+            questionText.value = '';
+            optionA.value = '';
+            optionB.value = '';
+            optionC.value = '';
+            optionD.value = '';
+            document.querySelector('input[name="correctAnswer"]:checked').checked = false;
+            
+            // Reset editing state
+            editingQuestion = null;
+            saveQuestionBtn.innerHTML = '<i class="fas fa-save"></i><span>Simpan Pertanyaan</span>';
+            
+            // Reload questions
+            loadQuestions();
+            
+            alert('Pertanyaan berhasil disimpan');
+          } else {
+            throw new Error(data.message);
+          }
+        } catch (error) {
+          console.error('Error saving question:', error);
+          alert(`Gagal menyimpan pertanyaan: ${error.message}`);
+        } finally {
+          hideLoading();
+        }
+      }
+      
+      async function deleteQuestion(questionId) {
+        if (!confirm(`Yakin ingin menghapus pertanyaan #${questionId}?`)) {
+          return;
+        }
+        
+        const adminKey = adminKeyInput.value.trim();
+        if (!adminKey) {
+          alert('Masukkan Admin Key terlebih dahulu');
+          return;
+        }
+        
+        showLoading();
+        
+        try {
+          const response = await fetch('/api/admin/delete-question', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              adminKey,
+              questionId
+            })
+          });
+          
+          const data = await response.json();
+          
+          if (data.status === 'success') {
+            // Reload questions
+            loadQuestions();
+            alert('Pertanyaan berhasil dihapus');
+          } else {
+            throw new Error(data.message);
+          }
+        } catch (error) {
+          console.error('Error deleting question:', error);
+          alert(`Gagal menghapus pertanyaan: ${error.message}`);
+        } finally {
+          hideLoading();
+        }
+      }
+      
+      function showLoading() {
+        loadingIndicator.classList.remove('hidden');
+      }
+      
+      function hideLoading() {
+        loadingIndicator.classList.add('hidden');
+      }
+    });
+  </script>
+</body>
+</html>
