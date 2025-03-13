@@ -2,11 +2,11 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthContext';
-// import { loginAdmin } from '../../services/api';
+import { loginAdmin } from '../../services/api';
 
 const AdminLogin = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@example.com'); // Pre-filled with admin email
+  const [password, setPassword] = useState('admin123');    // Pre-filled with admin password
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { login } = useContext(AuthContext);
@@ -22,43 +22,21 @@ const AdminLogin = () => {
     try {
       setLoading(true);
       
-      // Untuk sementara, simulasikan login berhasil
-      console.log('Mencoba login dengan:', { email, password });
+      // Use the real API
+      const response = await loginAdmin({ email, password });
       
-      // Simulasi delay dari API call
-      setTimeout(() => {
-        // Buat data user dummy
-        const userData = {
-          _id: "admin123",
-          name: "Admin User",
-          email: email,
-          isAdmin: true,
-          token: "dummy_token_123456"
-        };
-        
-        // Login user
-        login(userData);
-        
-        // Redirect ke panel admin
+      // Check if we got a valid response
+      if (response && response.token) {
+        // Login user with the real token
+        login(response);
         navigate('/admin/panel');
-      }, 1000);
-      
-      /* 
-      // Uncomment ini jika API sudah siap
-      const userData = await loginAdmin({ email, password });
-      
-      if (!userData.isAdmin) {
-        setError('Akses ditolak, anda bukan admin');
-        return;
+      } else {
+        console.error('Invalid response from login API:', response);
+        setError('Login gagal: Invalid response');
       }
-      
-      login(userData);
-      navigate('/admin/panel');
-      */
-      
     } catch (err) {
       console.error('Error login:', err);
-      setError(err.response?.data?.message || 'Login gagal');
+      setError(err.response?.data?.message || 'Login gagal. Pastikan email dan password benar.');
     } finally {
       setLoading(false);
     }
@@ -107,13 +85,6 @@ const AdminLogin = () => {
             {loading ? 'Memproses...' : 'Login'}
           </button>
         </form>
-        
-        <div className="register-link" style={{ marginTop: "2rem" }}>
-          <p>
-            Belum punya akun admin?{' '}
-            <Link to="/admin/register">Daftar di sini</Link>
-          </p>
-        </div>
         
         <div className="back-link" style={{ marginTop: "1rem" }}>
           <Link to="/">Kembali ke Beranda</Link>

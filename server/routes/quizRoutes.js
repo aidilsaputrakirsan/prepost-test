@@ -2,6 +2,7 @@
 const express = require('express');
 const {
   createQuiz,
+  getQuizzes,  // New controller method
   getQuizById,
   addQuestions,
   getQuizQuestions,
@@ -12,7 +13,9 @@ const { protect, adminOnly } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
+// Routes with handler functions
 router.post('/', protect, adminOnly, createQuiz);
+router.get('/', protect, adminOnly, getQuizzes);  // New route to get all quizzes
 router.get('/:id', getQuizById);
 router.post('/:id/questions', protect, adminOnly, addQuestions);
 router.get('/:id/questions', protect, adminOnly, getQuizQuestions);

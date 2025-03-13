@@ -2,6 +2,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const config = require('../config/config');
 
 const UserSchema = new mongoose.Schema({
   name: {
@@ -26,7 +27,7 @@ const UserSchema = new mongoose.Schema({
     select: false
   },
   currentQuiz: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,  // Changed from ObjectId to String to match our quiz IDs
     ref: 'QuizState',
     default: null
   },
@@ -55,9 +56,11 @@ UserSchema.pre('save', async function(next) {
 
 // Sign JWT and return
 UserSchema.methods.getSignedJwtToken = function() {
-  return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE
-  });
+  return jwt.sign(
+    { id: this._id }, 
+    config.jwtSecret, 
+    { expiresIn: config.jwtExpire }
+  );
 };
 
 // Match user entered password to hashed password in database

@@ -2,6 +2,7 @@
 const jwt = require('jsonwebtoken');
 const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
+const config = require('../config/config');
 
 // Protect routes
 exports.protect = asyncHandler(async (req, res, next) => {
@@ -22,14 +23,22 @@ exports.protect = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Verify token using the JWT secret from config
+    const decoded = jwt.verify(token, config.jwtSecret);
 
     // Get user from the token
-    req.user = await User.findById(decoded.id).select('-password');
-
+    const user = await User.findById(decoded.id).select('-password');
+    
+    if (!user) {
+      res.status(401);
+      throw new Error('Pengguna tidak ditemukan');
+    }
+    
+    // Attach user to request
+    req.user = user;
     next();
   } catch (error) {
+    console.error('Token validation error:', error.message);
     res.status(401);
     throw new Error('Akses ditolak, token tidak valid');
   }

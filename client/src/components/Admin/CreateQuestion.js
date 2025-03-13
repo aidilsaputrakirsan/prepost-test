@@ -3,6 +3,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthContext';
 import { addQuestions, getQuizQuestions } from '../../services/api';
+import Loading from '../Common/Loading';
 
 const CreateQuestion = () => {
   const { currentUser } = useContext(AuthContext);
@@ -14,6 +15,7 @@ const CreateQuestion = () => {
   const [loading, setLoading] = useState(false);
   const [fetchingQuestions, setFetchingQuestions] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const navigate = useNavigate();
   const { quizId } = useParams();
 
@@ -28,9 +30,10 @@ const CreateQuestion = () => {
       try {
         setFetchingQuestions(true);
         const response = await getQuizQuestions(quizId);
-        setQuestions(response.data);
+        setQuestions(response.data?.data || []);
       } catch (err) {
-        setError('Gagal memuat pertanyaan');
+        console.error('Error fetching questions:', err);
+        setError('Gagal memuat pertanyaan. Silakan coba lagi nanti.');
       } finally {
         setFetchingQuestions(false);
       }
@@ -45,8 +48,32 @@ const CreateQuestion = () => {
     setOptions(newOptions);
   };
 
+  const addOption = () => {
+    if (options.length < 6) {
+      setOptions([...options, '']);
+    }
+  };
+
+  const removeOption = (index) => {
+    if (options.length > 2) {
+      const newOptions = options.filter((_, i) => i !== index);
+      setOptions(newOptions);
+      
+      // Adjust correctOption if necessary
+      if (correctOption === index) {
+        setCorrectOption(0);
+      } else if (correctOption > index) {
+        setCorrectOption(correctOption - 1);
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Reset messages
+    setError('');
+    setSuccess('');
     
     // Validate
     if (!text.trim()) {
@@ -54,7 +81,9 @@ const CreateQuestion = () => {
       return;
     }
     
+    // Filter out empty options
     const validOptions = options.filter(option => option.trim() !== '');
+    
     if (validOptions.length < 2) {
       setError('Minimal 2 opsi jawaban diperlukan');
       return;
@@ -68,7 +97,7 @@ const CreateQuestion = () => {
     try {
       setLoading(true);
       
-      // Only include non-empty options
+      // Create question data with non-empty options
       const questionData = {
         text,
         options: validOptions,
@@ -78,22 +107,60 @@ const CreateQuestion = () => {
       
       await addQuestions(quizId, { questions: [questionData] });
       
-      // Update questions list
+      // Show success message
+      setSuccess('Pertanyaan berhasil ditambahkan!');
+      
+      // Refetch questions
       const response = await getQuizQuestions(quizId);
-      setQuestions(response.data);
+      setQuestions(response.data?.data || []);
       
       // Reset form
       setText('');
       setOptions(['', '', '', '']);
       setCorrectOption(0);
       setTimeLimit(15);
-      setError('');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccess('');
+      }, 3000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Gagal menambahkan pertanyaan');
+      console.error('Error adding question:', err);
+      setError(err.response?.data?.message || 'Gagal menambahkan pertanyaan. Silakan coba lagi.');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleDeleteQuestion = async (questionId) => {
+    if (window.confirm('Apakah Anda yakin ingin menghapus pertanyaan ini?')) {
+      try {
+        setLoading(true);
+        
+        // Implement API call to delete question
+        // await deleteQuestion(quizId, questionId);
+        
+        // For now, just filter out the question from local state
+        setQuestions(questions.filter(q => q._id !== questionId));
+        
+        setSuccess('Pertanyaan berhasil dihapus!');
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setSuccess('');
+        }, 3000);
+      } catch (err) {
+        console.error('Error deleting question:', err);
+        setError(err.response?.data?.message || 'Gagal menghapus pertanyaan');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  if (fetchingQuestions) {
+    return <Loading message="Memuat pertanyaan..." />;
+  }
 
   return (
     <div className="container">
@@ -110,7 +177,36 @@ const CreateQuestion = () => {
         <div className="quiz-info">
           <p>ID Kuis: {quizId}</p>
           <p>Total Pertanyaan: {questions.length}</p>
+          <div>
+            <p>Link untuk peserta: </p>
+            <code>{window.location.origin}/join/{quizId}</code>
+            <button 
+              className="btn btn-sm btn-info"
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/join/${quizId}`);
+                setSuccess('Link berhasil disalin!');
+                setTimeout(() => setSuccess(''), 3000);
+              }}
+              style={{ marginLeft: '10px' }}
+            >
+              Salin Link
+            </button>
+          </div>
         </div>
+        
+        {success && (
+          <div className="success-message" style={{
+            backgroundColor: 'rgba(46, 204, 113, 0.1)',
+            color: '#2ecc71',
+            padding: '0.75rem',
+            borderRadius: '4px',
+            marginBottom: '1rem'
+          }}>
+            {success}
+          </div>
+        )}
+        
+        {error && <div className="error-message">{error}</div>}
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -122,13 +218,14 @@ const CreateQuestion = () => {
               className="form-control"
               rows="3"
               disabled={loading}
+              placeholder="Masukkan pertanyaan di sini..."
             />
           </div>
           
           <div className="options-container">
             <label>Opsi Jawaban</label>
             {options.map((option, index) => (
-              <div key={index} className="option-group">
+              <div key={index} className="option-group" style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
                 <input
                   type="text"
                   value={option}
@@ -136,19 +233,43 @@ const CreateQuestion = () => {
                   className="form-control"
                   placeholder={`Opsi ${index + 1}`}
                   disabled={loading}
+                  style={{ flex: 1 }}
                 />
-                <label>
+                <label style={{ display: 'flex', alignItems: 'center', margin: '0 10px' }}>
                   <input
                     type="radio"
                     name="correctOption"
                     checked={correctOption === index}
                     onChange={() => setCorrectOption(index)}
                     disabled={loading}
+                    style={{ marginRight: '5px' }}
                   />
-                  Jawaban Benar
+                  Benar
                 </label>
+                {options.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => removeOption(index)}
+                    className="btn btn-sm btn-danger"
+                    disabled={loading}
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             ))}
+            
+            {options.length < 6 && (
+              <button
+                type="button"
+                onClick={addOption}
+                className="btn btn-sm btn-secondary"
+                disabled={loading}
+                style={{ marginTop: '5px' }}
+              >
+                + Tambah Opsi
+              </button>
+            )}
           </div>
           
           <div className="form-group">
@@ -157,15 +278,14 @@ const CreateQuestion = () => {
               type="number"
               id="timeLimit"
               value={timeLimit}
-              onChange={(e) => setTimeLimit(parseInt(e.target.value))}
+              onChange={(e) => setTimeLimit(parseInt(e.target.value) || 15)}
               min="5"
               max="60"
               className="form-control"
               disabled={loading}
+              style={{ maxWidth: '200px' }}
             />
           </div>
-          
-          {error && <div className="error-message">{error}</div>}
           
           <button type="submit" className="btn btn-primary" disabled={loading}>
             {loading ? 'Menyimpan...' : 'Tambah Pertanyaan'}
@@ -175,15 +295,22 @@ const CreateQuestion = () => {
         <div className="questions-list">
           <h3>Daftar Pertanyaan</h3>
           
-          {fetchingQuestions ? (
-            <p>Memuat pertanyaan...</p>
-          ) : questions.length === 0 ? (
+          {questions.length === 0 ? (
             <p>Belum ada pertanyaan. Tambahkan pertanyaan untuk memulai kuis.</p>
           ) : (
             <div className="question-cards">
               {questions.map((question, index) => (
                 <div key={index} className="question-card">
-                  <h4>Pertanyaan {index + 1}</h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h4>Pertanyaan {index + 1}</h4>
+                    <button 
+                      onClick={() => handleDeleteQuestion(question._id)} 
+                      className="btn btn-sm btn-danger"
+                      disabled={loading}
+                    >
+                      Hapus
+                    </button>
+                  </div>
                   <p>{question.text}</p>
                   <div className="options-list">
                     {question.options.map((option, optIndex) => (
@@ -207,7 +334,7 @@ const CreateQuestion = () => {
           )}
         </div>
         
-        <div className="action-buttons">
+        <div className="action-buttons" style={{ marginTop: '2rem' }}>
           <Link to={`/admin/participants/${quizId}`} className="btn btn-primary">
             Lihat Peserta
           </Link>

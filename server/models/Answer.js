@@ -8,7 +8,7 @@ const AnswerSchema = new mongoose.Schema({
     required: true
   },
   quiz: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: String, // Changed from ObjectId to String
     ref: 'QuizState',
     required: true
   },

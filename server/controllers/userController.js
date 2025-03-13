@@ -27,24 +27,30 @@ exports.createParticipant = asyncHandler(async (req, res) => {
     throw new Error('Quiz sudah dimulai atau selesai');
   }
 
-  // Create user (non-admin)
-  const user = await User.create({
-    name,
-    currentQuiz: quizId,
-    isAdmin: false
-  });
+  try {
+    // Create user (non-admin)
+    const user = await User.create({
+      name,
+      currentQuiz: quizId, // This should now work with string ID
+      isAdmin: false
+    });
 
-  // Add user to participants
-  quiz.participants.push(user._id);
-  await quiz.save();
+    // Add user to participants
+    quiz.participants.push(user._id);
+    await quiz.save();
 
-  res.status(201).json({
-    _id: user._id,
-    name: user.name,
-    currentQuiz: user.currentQuiz,
-    score: user.score,
-    token: user.getSignedJwtToken()
-  });
+    res.status(201).json({
+      _id: user._id,
+      name: user.name,
+      currentQuiz: user.currentQuiz,
+      score: user.score,
+      token: user.getSignedJwtToken()
+    });
+  } catch (error) {
+    console.error('Create participant error:', error);
+    res.status(500);
+    throw new Error(`Gagal membuat peserta: ${error.message}`);
+  }
 });
 
 // @desc    Get participants for a quiz

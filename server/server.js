@@ -1,4 +1,4 @@
-// server/server.js - VERSI DIPERBAIKI DENGAN CONFIG
+// server/server.js
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
@@ -6,14 +6,6 @@ const mongoose = require('mongoose');
 const socketIO = require('socket.io');
 const path = require('path');
 const config = require('./config/config');
-
-// Ini tidak perlu lagi karena kita menggunakan config
-// dotenv.config();
-
-// Cek apakah config dimuat dengan benar
-console.log('Environment:', config.nodeEnv);
-console.log('PORT:', config.port);
-console.log('MongoDB URI exists:', !!config.mongoURI);
 
 // Routes
 const authRoutes = require('./routes/authRoutes');
@@ -23,7 +15,7 @@ const userRoutes = require('./routes/userRoutes');
 // Socket handler
 const setupSocketHandlers = require('./socket/socketHandler');
 
-// Express app setup
+// Create Express app
 const app = express();
 const server = http.createServer(app);
 
@@ -31,7 +23,7 @@ const server = http.createServer(app);
 const io = socketIO(server, {
   cors: {
     origin: config.nodeEnv === 'production'
-      ? ['https://prepost-test.vercel.app']
+      ? config.allowedOrigins
       : ['http://localhost:3000'],
     methods: ['GET', 'POST'],
     credentials: true
@@ -39,27 +31,52 @@ const io = socketIO(server, {
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: config.nodeEnv === 'production' ? config.allowedOrigins : '*',
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Database connection
+// Database connection with retry
 const connectDB = async () => {
-  try {
-    if (!config.mongoURI) {
-      throw new Error('mongoURI is undefined in config.');
-    }
-   
-    await mongoose.connect(config.mongoURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    console.log('MongoDB connected successfully');
-  } catch (err) {
-    console.error('MongoDB connection error:', err);
-    // Jangan langsung exit untuk development, izinkan server tetap berjalan
-    if (config.nodeEnv === 'production') {
-      process.exit(1);
+  const MAX_RETRIES = 5;
+  let retries = 0;
+  let connected = false;
+
+  while (!connected && retries < MAX_RETRIES) {
+    try {
+      console.log(`MongoDB connection attempt ${retries + 1}...`);
+      
+      if (!config.mongoURI) {
+        throw new Error('MongoDB URI is undefined in config');
+      }
+      
+      await mongoose.connect(config.mongoURI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        serverSelectionTimeoutMS: 5000, // 5 seconds timeout
+      });
+      
+      console.log('MongoDB connected successfully');
+      connected = true;
+    } catch (err) {
+      retries++;
+      console.error(`MongoDB connection error (attempt ${retries}):`, err.message);
+      
+      if (retries < MAX_RETRIES) {
+        console.log(`Retrying in 5 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+      } else {
+        console.error(`Failed to connect to MongoDB after ${MAX_RETRIES} attempts`);
+        
+        // Don't exit in development mode
+        if (config.nodeEnv === 'production') {
+          process.exit(1);
+        } else {
+          console.warn('Running without database connection. Some features will not work.');
+        }
+      }
     }
   }
 };
@@ -71,6 +88,16 @@ connectDB();
 app.use('/api/auth', authRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/user', userRoutes);
+
+// Basic error handler
+app.use((err, req, res, next) => {
+  console.error('Server Error:', err.message);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Server Error',
+    stack: config.nodeEnv === 'production' ? null : err.stack
+  });
+});
 
 // Setup Socket handlers
 setupSocketHandlers(io);
@@ -88,13 +115,13 @@ if (config.nodeEnv === 'production') {
 const PORT = config.port || 5000;
 
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT} in ${config.nodeEnv} mode`);
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {
   console.log(`Error: ${err.message}`);
-  // Jangan close server untuk development
+  // Don't close server for development
   if (config.nodeEnv === 'production') {
     server.close(() => process.exit(1));
   }
