@@ -1,0 +1,25 @@
+{
+    "name": "prepost-test",
+    "version": "1.0.0",
+    "description": "Aplikasi quiz untuk pretest dan posttest",
+    "main": "server/server.js",
+    "scripts": {
+        "start": "node server/server.js",
+        "server": "nodemon server/server.js",
+        "client": "npm start --prefix client",
+        "dev": "concurrently \"npm run server\" \"npm run client\"",
+        "install-server": "npm install --prefix server",
+        "install-client": "npm install --prefix client",
+        "install-all": "npm install && npm run install-server && npm run install-client",
+        "build-client": "npm run build --prefix client",
+        "heroku-postbuild": "NPM_CONFIG_PRODUCTION=false npm run install-client && npm run build-client"
+    },
+    "author": "Aidil Saputra Kirsan",
+    "license": "MIT",
+    "dependencies": {
+        "concurrently": "^7.6.0"
+    },
+    "devDependencies": {
+        "nodemon": "^3.1.9"
+    }
+}

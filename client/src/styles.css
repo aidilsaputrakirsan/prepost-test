@@ -1,0 +1,596 @@
+/* client/src/styles.css */
+:root {
+  --primary-color: #3498db;
+  --primary-dark: #2980b9;
+  --secondary-color: #2c3e50;
+  --success-color: #2ecc71;
+  --danger-color: #e74c3c;
+  --warning-color: #f39c12;
+  --info-color: #3498db;
+  --light-color: #ecf0f1;
+  --dark-color: #2c3e50;
+  --correct-color: #2ecc71;
+  --incorrect-color: #e74c3c;
+  --gray-light: #f8f9fa;
+  --gray: #e9ecef;
+  --gray-dark: #495057;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  color: var(--dark-color);
+  background-color: var(--gray-light);
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.main-content {
+  flex: 1;
+  padding: 2rem 0;
+}
+
+/* Header Styles */
+.app-header {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 1rem 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo h1 {
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.logo a {
+  color: white;
+  text-decoration: none;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.admin-link {
+  color: white;
+  text-decoration: none;
+  padding: 0.25rem 0.5rem;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+/* Footer Styles */
+.app-footer {
+  background-color: var(--secondary-color);
+  color: white;
+  padding: 1rem 0;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+/* Button Styles */
+.btn {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  font-size: 1rem;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+}
+
+.btn-secondary {
+  background-color: var(--secondary-color);
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #1a252f;
+}
+
+.btn-success {
+  background-color: var(--success-color);
+  color: white;
+}
+
+.btn-success:hover {
+  background-color: #27ae60;
+}
+
+.btn-danger {
+  background-color: var(--danger-color);
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #c0392b;
+}
+
+.btn-warning {
+  background-color: var(--warning-color);
+  color: white;
+}
+
+.btn-warning:hover {
+  background-color: #e67e22;
+}
+
+.btn-info {
+  background-color: var(--info-color);
+  color: white;
+}
+
+.btn-info:hover {
+  background-color: var(--primary-dark);
+}
+
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid var(--gray);
+  border-radius: 4px;
+  transition: border-color 0.3s;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+/* Timer Styles */
+.timer-container {
+  margin-bottom: 1rem;
+}
+
+.timer-text {
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 0.25rem;
+}
+
+.timer-bar {
+  height: 10px;
+  background-color: var(--gray);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.timer-progress {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 1s linear;
+}
+
+.timer-green {
+  background-color: var(--success-color);
+}
+
+.timer-yellow {
+  background-color: var(--warning-color);
+}
+
+.timer-red {
+  background-color: var(--danger-color);
+}
+
+/* Quiz Question Styles */
+.quiz-question-container {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.question-header {
+  margin-bottom: 1.5rem;
+}
+
+.question-text {
+  font-size: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.options-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.option-button {
+  padding: 1rem;
+  background-color: var(--gray-light);
+  border: 2px solid var(--gray);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  text-align: left;
+  transition: all 0.3s;
+}
+
+.option-button:hover {
+  background-color: var(--gray);
+}
+
+.option-button.selected {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-dark);
+}
+
+.option-button.correct {
+  background-color: var(--correct-color);
+  color: white;
+  border-color: var(--correct-color);
+}
+
+.option-button.incorrect {
+  background-color: var(--incorrect-color);
+  color: white;
+  border-color: var(--incorrect-color);
+}
+
+.answer-result {
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.25rem;
+  margin-top: 1rem;
+}
+
+.answer-result.correct {
+  background-color: rgba(46, 204, 113, 0.2);
+  color: var(--correct-color);
+}
+
+.answer-result.incorrect {
+  background-color: rgba(231, 76, 60, 0.2);
+  color: var(--incorrect-color);
+}
+
+/* Waiting Room Styles */
+.waiting-room-container {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.user-info {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background-color: var(--gray-light);
+  border-radius: 8px;
+}
+
+.participants-list {
+  margin-top: 2rem;
+}
+
+.participants-list ul {
+  list-style: none;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  background-color: var(--gray-light);
+  border-radius: 8px;
+}
+
+.participants-list li {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--gray);
+}
+
+.participants-list li:last-child {
+  border-bottom: none;
+}
+
+/* Loading Styles */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-left-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error Message */
+.error-message {
+  color: var(--danger-color);
+  background-color: rgba(231, 76, 60, 0.1);
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+/* Admin Panel Styles */
+.admin-panel-container,
+.create-question-container,
+.participants-list-container,
+.quiz-control-container {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.admin-header,
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.quiz-info {
+  background-color: var(--gray-light);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.create-quiz {
+  margin-bottom: 2rem;
+}
+
+.quizzes-list,
+.questions-list,
+.leaderboard-section {
+  margin-top: 2rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+}
+
+th, td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--gray);
+}
+
+th {
+  background-color: var(--gray-light);
+  font-weight: bold;
+}
+
+tr:hover {
+  background-color: var(--gray-light);
+}
+
+.quiz-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.status-waiting {
+  color: var(--warning-color);
+}
+
+.status-active {
+  color: var(--success-color);
+}
+
+.status-finished {
+  color: var(--secondary-color);
+}
+
+.option-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.option-group input[type="text"] {
+  flex: 1;
+  margin-right: 1rem;
+}
+
+.question-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.question-card {
+  background-color: var(--gray-light);
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid var(--primary-color);
+}
+
+.options-list {
+  margin-top: 0.5rem;
+}
+
+.option {
+  padding: 0.5rem;
+  margin-bottom: 0.25rem;
+  border-radius: 4px;
+}
+
+.option.correct {
+  background-color: rgba(46, 204, 113, 0.2);
+  color: var(--correct-color);
+}
+
+/* Leaderboard Styles */
+.leaderboard-container {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.leaderboard-table {
+  margin-top: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.current-user {
+  background-color: rgba(52, 152, 219, 0.1);
+  font-weight: bold;
+}
+
+/* Quiz Results Styles */
+.quiz-results-container {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.user-result {
+  margin: 2rem 0;
+}
+
+.result-info {
+  background-color: var(--gray-light);
+  padding: 1.5rem;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .options-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .admin-header,
+  .page-header,
+  .action-buttons {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .admin-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .question-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  table {
+    font-size: 0.875rem;
+  }
+  
+  th, td {
+    padding: 0.5rem;
+  }
+  
+  .quiz-actions {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}
