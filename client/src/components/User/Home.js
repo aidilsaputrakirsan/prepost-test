@@ -1,6 +1,6 @@
 // client/src/components/User/Home.js
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const Home = () => {
   const [quizId, setQuizId] = useState('');
@@ -22,7 +22,7 @@ const Home = () => {
         <h2>Selamat Datang di PrePostTEST</h2>
         <p>Masukkan ID kuis untuk bergabung</p>
         
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} style={{ marginTop: "2rem" }}>
           <div className="form-group">
             <input
               type="text"
@@ -33,15 +33,18 @@ const Home = () => {
             />
           </div>
           {error && <div className="error-message">{error}</div>}
-          <button type="submit" className="btn btn-primary">
+          <button type="submit" className="btn btn-primary" style={{ marginTop: "1rem" }}>
             Bergabung
           </button>
         </form>
         
-        <div className="admin-link">
+        <div style={{ marginTop: "2rem" }}>
           <p>
             Admin?{' '}
-            <a href="/admin/login">Login di sini</a>
+            <Link to="/admin/login">Login di sini</Link>
+          </p>
+          <p style={{ marginTop: "0.5rem" }}>
+            <Link to="/admin/register">Daftar akun admin baru</Link>
           </p>
         </div>
       </div>

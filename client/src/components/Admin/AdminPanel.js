@@ -1,9 +1,7 @@
-
 // client/src/components/Admin/AdminPanel.js
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthContext';
-import { createQuiz } from '../../services/api';
 
 const AdminPanel = () => {
   const { currentUser, logout } = useContext(AuthContext);
@@ -15,38 +13,42 @@ const AdminPanel = () => {
   useEffect(() => {
     if (!currentUser || !currentUser.isAdmin) {
       navigate('/admin/login');
+      return;
     }
     
-    // In a real app, you'd fetch existing quizzes here
-    // For now, we'll just use localStorage to demonstrate
-    const storedQuizzes = localStorage.getItem('adminQuizzes');
-    if (storedQuizzes) {
-      setQuizzes(JSON.parse(storedQuizzes));
-    }
+    // Simulasi quiz yang sudah ada
+    setTimeout(() => {
+      const dummyQuizzes = [
+        {
+          _id: "quiz123",
+          createdAt: new Date().toISOString(),
+          status: 'waiting',
+          participantCount: 0
+        }
+      ];
+      setQuizzes(dummyQuizzes);
+    }, 500);
+    
   }, [currentUser, navigate]);
 
   const handleCreateQuiz = async () => {
     try {
       setLoading(true);
-      const response = await createQuiz();
-      
+      // Simulasi pembuatan quiz baru
       const newQuiz = {
-        _id: response.data._id,
+        _id: "quiz" + Math.floor(Math.random() * 10000),
         createdAt: new Date().toISOString(),
         status: 'waiting',
         participantCount: 0
       };
       
-      const updatedQuizzes = [...quizzes, newQuiz];
-      setQuizzes(updatedQuizzes);
-      
-      // Save to localStorage for demo purposes
-      localStorage.setItem('adminQuizzes', JSON.stringify(updatedQuizzes));
-      
-      // Navigate to create questions page
-      navigate(`/admin/create-question/${newQuiz._id}`);
+      setQuizzes([...quizzes, newQuiz]);
+      setTimeout(() => {
+        navigate(`/admin/create-question/${newQuiz._id}`);
+      }, 500);
     } catch (err) {
-      setError(err.response?.data?.message || 'Gagal membuat kuis');
+      setError('Gagal membuat kuis');
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -59,11 +61,21 @@ const AdminPanel = () => {
 
   return (
     <div className="container">
-      <div className="admin-panel-container">
-        <div className="admin-header">
+      <div className="admin-panel-container" style={{
+        backgroundColor: "white",
+        padding: "2rem",
+        borderRadius: "8px",
+        boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)"
+      }}>
+        <div className="admin-header" style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "2rem"
+        }}>
           <h2>Panel Admin</h2>
           <div className="admin-actions">
-            <p>Selamat datang, {currentUser?.name}</p>
+            <p>Selamat datang, {currentUser?.name || "Admin"}</p>
             <button
               onClick={handleLogout}
               className="btn btn-secondary"
@@ -73,7 +85,7 @@ const AdminPanel = () => {
           </div>
         </div>
         
-        <div className="create-quiz">
+        <div className="create-quiz" style={{ marginBottom: "2rem" }}>
           <button
             onClick={handleCreateQuiz}
             className="btn btn-primary"
@@ -91,55 +103,57 @@ const AdminPanel = () => {
           {quizzes.length === 0 ? (
             <p>Belum ada kuis. Buat kuis baru untuk memulai.</p>
           ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>ID Kuis</th>
-                  <th>Tanggal Dibuat</th>
-                  <th>Status</th>
-                  <th>Peserta</th>
-                  <th>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {quizzes.map((quiz) => (
-                  <tr key={quiz._id}>
-                    <td>{quiz._id}</td>
-                    <td>{new Date(quiz.createdAt).toLocaleString()}</td>
-                    <td>
-                      {quiz.status === 'waiting'
-                        ? 'Menunggu'
-                        : quiz.status === 'active'
-                        ? 'Aktif'
-                        : 'Selesai'}
-                    </td>
-                    <td>{quiz.participantCount}</td>
-                    <td>
-                      <div className="quiz-actions">
-                        <Link
-                          to={`/admin/create-question/${quiz._id}`}
-                          className="btn btn-sm btn-primary"
-                        >
-                          Soal
-                        </Link>
-                        <Link
-                          to={`/admin/participants/${quiz._id}`}
-                          className="btn btn-sm btn-info"
-                        >
-                          Peserta
-                        </Link>
-                        <Link
-                          to={`/admin/control/${quiz._id}`}
-                          className="btn btn-sm btn-success"
-                        >
-                          Kontrol
-                        </Link>
-                      </div>
-                    </td>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th style={{ padding: "0.75rem", textAlign: "left", borderBottom: "1px solid #e9ecef" }}>ID Kuis</th>
+                    <th style={{ padding: "0.75rem", textAlign: "left", borderBottom: "1px solid #e9ecef" }}>Tanggal Dibuat</th>
+                    <th style={{ padding: "0.75rem", textAlign: "left", borderBottom: "1px solid #e9ecef" }}>Status</th>
+                    <th style={{ padding: "0.75rem", textAlign: "left", borderBottom: "1px solid #e9ecef" }}>Peserta</th>
+                    <th style={{ padding: "0.75rem", textAlign: "left", borderBottom: "1px solid #e9ecef" }}>Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {quizzes.map((quiz) => (
+                    <tr key={quiz._id}>
+                      <td style={{ padding: "0.75rem", borderBottom: "1px solid #e9ecef" }}>{quiz._id}</td>
+                      <td style={{ padding: "0.75rem", borderBottom: "1px solid #e9ecef" }}>{new Date(quiz.createdAt).toLocaleString()}</td>
+                      <td style={{ padding: "0.75rem", borderBottom: "1px solid #e9ecef" }}>
+                        {quiz.status === 'waiting'
+                          ? 'Menunggu'
+                          : quiz.status === 'active'
+                          ? 'Aktif'
+                          : 'Selesai'}
+                      </td>
+                      <td style={{ padding: "0.75rem", borderBottom: "1px solid #e9ecef" }}>{quiz.participantCount}</td>
+                      <td style={{ padding: "0.75rem", borderBottom: "1px solid #e9ecef" }}>
+                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                          <Link
+                            to={`/admin/create-question/${quiz._id}`}
+                            className="btn btn-sm btn-primary"
+                          >
+                            Soal
+                          </Link>
+                          <Link
+                            to={`/admin/participants/${quiz._id}`}
+                            className="btn btn-sm btn-info"
+                          >
+                            Peserta
+                          </Link>
+                          <Link
+                            to={`/admin/control/${quiz._id}`}
+                            className="btn btn-sm btn-success"
+                          >
+                            Kontrol
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
