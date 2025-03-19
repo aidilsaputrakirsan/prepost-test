@@ -30,13 +30,28 @@ const io = socketIO(server, {
   }
 });
 
-// Middleware
-app.use(cors({
-  origin: config.nodeEnv === 'production' ? config.allowedOrigins : '*',
-  credentials: true
-}));
+// Basic middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Enhanced CORS for Vercel in production
+if (config.nodeEnv === 'production') {
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    if (req.method === 'OPTIONS') {
+      res.header('Access-Control-Allow-Methods', 'PUT, POST, PATCH, DELETE, GET');
+      return res.status(200).json({});
+    }
+    next();
+  });
+} else {
+  // Development CORS
+  app.use(cors({
+    origin: '*',
+    credentials: true
+  }));
+}
 
 // Database connection with retry
 const connectDB = async () => {
@@ -84,12 +99,15 @@ const connectDB = async () => {
 // Connect to database
 connectDB();
 
-// Routes
+// API Routes - these should come before the catch-all route
 app.use('/api/auth', authRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/user', userRoutes);
 
-// Basic error handler
+// Setup Socket handlers
+setupSocketHandlers(io);
+
+// Error handler middleware
 app.use((err, req, res, next) => {
   console.error('Server Error:', err.message);
   res.status(err.status || 500).json({
@@ -99,24 +117,30 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Setup Socket handlers
-setupSocketHandlers(io);
-
-// Serve static assets if in production
+// Serve static assets in production - MUST come after API routes
 if (config.nodeEnv === 'production') {
+  // Serve static files
   app.use(express.static(path.join(__dirname, '../client/build')));
- 
+  
+  // This must be the LAST route handler - catches all other requests
   app.get('*', (req, res) => {
     res.sendFile(path.resolve(__dirname, '../client/build', 'index.html'));
   });
 }
 
-// Server port
-const PORT = config.port || 5000;
+// Server port - use the provided port or default to 5000
+const PORT = process.env.PORT || config.port || 5000;
 
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} in ${config.nodeEnv} mode`);
-});
+// For Vercel serverless deployment - export the app
+if (process.env.VERCEL) {
+  // In Vercel environment, export the app
+  module.exports = app;
+} else {
+  // For regular deployment, start the server
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT} in ${config.nodeEnv} mode`);
+  });
+}
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {
@@ -126,25 +150,3 @@ process.on('unhandledRejection', (err, promise) => {
     server.close(() => process.exit(1));
   }
 });
-
-// Add these lines in your server.js file
-if (process.env.NODE_ENV === 'production') {
-  // Handle CORS for Vercel
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    if (req.method === 'OPTIONS') {
-      res.header('Access-Control-Allow-Methods', 'PUT, POST, PATCH, DELETE, GET');
-      return res.status(200).json({});
-    }
-    next();
-  });
-  
-  // Serve static files
-  app.use(express.static(path.join(__dirname, '../client/build')));
-  
-  // Handle React routing, return all requests to React app
-  app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../client/build', 'index.html'));
-  });
-}
