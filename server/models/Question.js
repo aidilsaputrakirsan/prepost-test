@@ -2,6 +2,14 @@
 const mongoose = require('mongoose');
 
 const QuestionSchema = new mongoose.Schema({
+  // Add questionId field with unique auto-generated value
+  questionId: {
+    type: String,
+    default: function() {
+      return new mongoose.Types.ObjectId().toString();
+    },
+    unique: true
+  },
   text: {
     type: String,
     required: [true, 'Pertanyaan diperlukan'],
@@ -12,9 +20,9 @@ const QuestionSchema = new mongoose.Schema({
     required: [true, 'Opsi jawaban diperlukan'],
     validate: {
       validator: function(v) {
-        return v.length >= 2 && v.length <= 4;
+        return v.length >= 2 && v.length <= 6; // Updated to allow up to 6 options
       },
-      message: 'Pertanyaan harus memiliki 2-4 opsi jawaban'
+      message: 'Pertanyaan harus memiliki 2-6 opsi jawaban'
     }
   },
   correctOption: {

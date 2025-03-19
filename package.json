@@ -15,7 +15,11 @@
         "heroku-postbuild": "NPM_CONFIG_PRODUCTION=false npm run install-client && npm run build-client",
         "create-admin": "node server/scripts/createAdmin.js",
         "debug-db": "node server/scripts/debugConnection.js",
-        "create-admin-quiz-app": "node server/scripts/createAdminCustom.js quiz_app"
+        "create-admin-quiz-app": "node server/scripts/createAdminCustom.js quiz_app",
+        "fix-db": "node server/scripts/fixDatabase.js",
+        "check-db": "node server/scripts/checkDatabase.js",
+        "fix-leaderboard": "node server/scripts/fixLeaderboard.js",
+        "fix-leaderboard-index": "node server/scripts/fixLeaderboardIndex.js"
     },
     "author": "Aidil Saputra Kirsan",
     "license": "MIT",

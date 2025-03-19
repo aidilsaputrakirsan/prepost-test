@@ -74,3 +74,34 @@ exports.getQuizParticipants = asyncHandler(async (req, res) => {
     data: participants
   });
 });
+
+// Add this function to userController.js
+
+// @desc    Get user by ID
+// @route   GET /api/user/:id
+// @access  Public
+exports.getUserById = asyncHandler(async (req, res) => {
+  try {
+    const userId = req.params.id;
+    
+    const user = await User.findById(userId).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pengguna tidak ditemukan'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: user
+    });
+  } catch (error) {
+    console.error('Error getting user:', error);
+    res.status(500).json({
+      success: false,
+      message: `Gagal mendapatkan data pengguna: ${error.message}`
+    });
+  }
+});

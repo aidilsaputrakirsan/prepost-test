@@ -83,78 +83,113 @@ module.exports = (io) => {
     }
   };
   
-  // Calculate leaderboard
-  const calculateLeaderboard = async (quizId) => {
-    try {
-      const quiz = await QuizState.findById(quizId).populate('questions participants').exec();
-      
-      if (!quiz) {
-        return;
-      }
-      
-      // Get all answers for this quiz
-      const answers = await Answer.find({ quiz: quizId }).exec();
-      
-      // Calculate scores for each participant
-      const leaderboardEntries = await Promise.all(quiz.participants.map(async (user) => {
-        const userAnswers = answers.filter(answer => answer.user.toString() === user._id.toString());
-        
-        const correctAnswers = userAnswers.filter(answer => answer.isCorrect).length;
-        const totalResponseTime = userAnswers.reduce((total, answer) => total + answer.responseTime, 0);
-        const averageResponseTime = userAnswers.length > 0 ? totalResponseTime / userAnswers.length : 0;
-        
-        // Calculate score: (correct answers * 100) + speed bonus
-        // Speed bonus decreases with slower response time
-        const scoreBase = correctAnswers * 100;
-        const speedBonus = userAnswers.reduce((bonus, answer) => {
-          if (answer.isCorrect) {
-            // Max bonus of 50 points for immediate answers (0ms)
-            // Minimum bonus of 0 for answers at the time limit
-            const timeLimit = quiz.questions.find(q => q._id.toString() === answer.question.toString()).timeLimit * 1000;
-            return bonus + Math.max(0, 50 * (1 - (answer.responseTime / timeLimit)));
-          }
-          return bonus;
-        }, 0);
-        
-        const totalScore = Math.round(scoreBase + speedBonus);
-        
-        // Update user's score
-        await User.findByIdAndUpdate(user._id, { score: totalScore });
-        
-        return {
-          user: user._id,
-          name: user.name,
-          score: totalScore,
-          correctAnswers,
-          totalQuestions: quiz.questions.length,
-          averageResponseTime
-        };
-      }));
-      
-      // Sort entries by score (descending)
-      leaderboardEntries.sort((a, b) => b.score - a.score);
-      
-      // Create or update leaderboard
-      let leaderboard = await Leaderboard.findOne({ quiz: quizId });
-      
-      if (leaderboard) {
-        leaderboard.entries = leaderboardEntries;
-        await leaderboard.save();
-      } else {
-        leaderboard = await Leaderboard.create({
-          quiz: quizId,
-          entries: leaderboardEntries
-        });
-      }
-      
-      // Emit leaderboard to all participants
-      io.to(`quiz:${quizId}`).emit('leaderboard', { entries: leaderboardEntries });
-      
-      return leaderboard;
-    } catch (error) {
-      console.error('Error calculating leaderboard:', error);
+  // Updated calculateLeaderboard function for socket/socketHandler.js
+
+// Calculate leaderboard
+const calculateLeaderboard = async (quizId) => {
+  try {
+    console.log(`Calculating leaderboard for quiz ${quizId}...`);
+    
+    const quiz = await QuizState.findById(quizId)
+      .populate('questions participants')
+      .exec();
+    
+    if (!quiz) {
+      console.error(`Quiz ${quizId} not found`);
+      return null;
     }
-  };
+    
+    // Get all answers for this quiz
+    const answers = await Answer.find({ quiz: quizId }).exec();
+    console.log(`Found ${answers.length} answers for quiz ${quizId}`);
+    
+    // Get all participants (even if not in quiz.participants anymore)
+    let participantIds = [...new Set([
+      ...quiz.participants,
+      ...answers.map(a => a.user.toString())
+    ])];
+    
+    const participants = await User.find({ 
+      _id: { $in: participantIds } 
+    }).select('_id name');
+    
+    console.log(`Processing ${participants.length} participants`);
+    
+    // Calculate scores for each participant
+    const leaderboardEntries = await Promise.all(participants.map(async (user) => {
+      const userAnswers = answers.filter(answer => 
+        answer.user.toString() === user._id.toString()
+      );
+      
+      const correctAnswers = userAnswers.filter(answer => answer.isCorrect).length;
+      const totalResponseTime = userAnswers.reduce((total, answer) => total + answer.responseTime, 0);
+      const averageResponseTime = userAnswers.length > 0 ? totalResponseTime / userAnswers.length : 0;
+      
+      // Calculate score: (correct answers * 100) + speed bonus
+      const scoreBase = correctAnswers * 100;
+      
+      // Speed bonus decreases with slower response time
+      const speedBonus = userAnswers.reduce((bonus, answer) => {
+        if (answer.isCorrect) {
+          // Find the question to get its time limit
+          const question = quiz.questions.find(q => 
+            q._id.toString() === answer.question.toString()
+          );
+          
+          if (!question) return bonus;
+          
+          // Max bonus of 50 points for immediate answers (0ms)
+          // Minimum bonus of 0 for answers at the time limit
+          const timeLimit = question.timeLimit * 1000;
+          return bonus + Math.max(0, Math.round(50 * (1 - (answer.responseTime / timeLimit))));
+        }
+        return bonus;
+      }, 0);
+      
+      const totalScore = scoreBase + speedBonus;
+      
+      // Update user's score
+      await User.findByIdAndUpdate(user._id, { score: totalScore });
+      
+      return {
+        user: user._id,
+        name: user.name,
+        score: totalScore,
+        correctAnswers,
+        totalQuestions: quiz.questions.length,
+        averageResponseTime
+      };
+    }));
+    
+    // Sort entries by score (descending)
+    leaderboardEntries.sort((a, b) => b.score - a.score);
+    
+    console.log(`Leaderboard calculated with ${leaderboardEntries.length} entries`);
+    
+    // Create or update leaderboard
+    let leaderboard = await Leaderboard.findOne({ quiz: quizId });
+    
+    if (leaderboard) {
+      leaderboard.entries = leaderboardEntries;
+      await leaderboard.save();
+      console.log(`Updated existing leaderboard for quiz ${quizId}`);
+    } else {
+      leaderboard = await Leaderboard.create({
+        quiz: quizId,
+        entries: leaderboardEntries
+      });
+      console.log(`Created new leaderboard for quiz ${quizId}`);
+    }
+    
+    // Emit leaderboard to all participants
+    io.to(`quiz:${quizId}`).emit('leaderboard', { entries: leaderboardEntries });
+    
+    return leaderboard;
+  } catch (error) {
+    console.error('Error calculating leaderboard:', error);
+    return null;
+  }
+};
   
   io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
