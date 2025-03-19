@@ -1,10 +1,10 @@
 // client/src/services/socket.js
 import { io } from 'socket.io-client';
 
-// Create a socket instance
+// Update the createSocket function:
 const createSocket = () => {
   const BACKEND_URL = process.env.NODE_ENV === 'production'
-    ? 'https://prepost-test-backend.vercel.app'
+    ? window.location.origin
     : 'http://localhost:5000';
   
   return io(BACKEND_URL, {
