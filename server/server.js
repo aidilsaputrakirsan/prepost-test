@@ -1,10 +1,7 @@
 // server/server.js
 const express = require('express');
-const http = require('http');
-const https = require('https');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const socketIO = require('socket.io');
 const path = require('path');
 const config = require('./config/config');
 
@@ -13,25 +10,8 @@ const authRoutes = require('./routes/authRoutes');
 const quizRoutes = require('./routes/quizRoutes');
 const userRoutes = require('./routes/userRoutes');
 
-// Socket handler
-const setupSocketHandlers = require('./socket/socketHandler');
-
 // Create Express app
 const app = express();
-const server = http.createServer(app);
-
-// Socket.io setup untuk Glitch
-const io = socketIO(server, {
-  cors: {
-    origin: [
-      'http://localhost:3000', 
-      'https://aidilsaputrakirsan.github.io'
-    ],
-    methods: ["GET", "POST"],
-    credentials: true
-  },
-  transports: ['websocket', 'polling'] // Penting: Dukung kedua transport methods
-});
 
 // Basic middleware
 app.use(express.json());
@@ -45,78 +25,73 @@ app.use(cors({
       'https://aidilsaputrakirsan.github.io'
     ];
     
-    // Tambahkan domain Glitch ke allowed origins
-    if (process.env.PROJECT_DOMAIN) {
-      allowedOrigins.push(`https://${process.env.PROJECT_DOMAIN}.glitch.me`);
+    // Add Vercel URL to allowed origins
+    if (process.env.VERCEL_URL) {
+      allowedOrigins.push(`https://${process.env.VERCEL_URL}`);
     }
     
-    // Izinkan permintaan tanpa origin (misal dari Postman)
+    // Add prepost-test.vercel.app
+    allowedOrigins.push('https://prepost-test.vercel.app');
+    
+    // Allow requests without origin (like Postman)
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
       callback(null, true);
     } else {
-      console.log('Origin ditolak oleh CORS:', origin);
-      callback(null, true); // Untuk debugging, izinkan semua origin
+      console.log('Origin rejected by CORS:', origin);
+      callback(null, true); // For debugging, allow all origins
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true
 }));
 
-// Database connection with retry
+// Database connection with retry logic for regular environments
+// In serverless, we'll connect for each request
 const connectDB = async () => {
-  const MAX_RETRIES = 5;
-  let retries = 0;
-  let connected = false;
+  if (mongoose.connection.readyState) {
+    return; // Already connected
+  }
 
-  while (!connected && retries < MAX_RETRIES) {
-    try {
-      console.log(`MongoDB connection attempt ${retries + 1}...`);
-      
-      if (!config.mongoURI) {
-        throw new Error('MongoDB URI is undefined in config');
-      }
-      
-      await mongoose.connect(config.mongoURI, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        serverSelectionTimeoutMS: 5000, // 5 seconds timeout
-      });
-      
-      console.log('MongoDB connected successfully');
-      connected = true;
-    } catch (err) {
-      retries++;
-      console.error(`MongoDB connection error (attempt ${retries}):`, err.message);
-      
-      if (retries < MAX_RETRIES) {
-        console.log(`Retrying in 5 seconds...`);
-        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
-      } else {
-        console.error(`Failed to connect to MongoDB after ${MAX_RETRIES} attempts`);
-        
-        // Don't exit in development mode
-        if (config.nodeEnv === 'production') {
-          console.warn('Running without database connection. Some features will not work.');
-        }
-      }
+  try {
+    if (!config.mongoURI) {
+      throw new Error('MongoDB URI is undefined in config');
     }
+    
+    await mongoose.connect(config.mongoURI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000, // 5 second timeout
+    });
+    
+    console.log('MongoDB connected successfully');
+  } catch (err) {
+    console.error(`MongoDB connection error:`, err.message);
+    throw err; // Propagate error for serverless error handling
   }
 };
 
-// Connect to database
-connectDB();
-
 // Health check endpoint
-app.get('/healthcheck', (req, res) => {
+app.get('/healthcheck', async (req, res) => {
+  // Connect to DB for each request in serverless
+  if (process.env.VERCEL) {
+    try {
+      await connectDB();
+    } catch (err) {
+      console.error('DB connection failed during healthcheck');
+      // Continue anyway to show the status
+    }
+  }
+
   res.status(200).json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV,
     service: 'PrePostTEST API',
-    hosting: 'Glitch',
-    project: process.env.PROJECT_DOMAIN || 'local'
+    hosting: process.env.VERCEL ? 'Vercel' : 'Server',
+    mongodb: mongoose.connection.readyState ? 'connected' : 'disconnected',
+    project: process.env.VERCEL_URL || 'local'
   });
 });
 
@@ -124,9 +99,6 @@ app.get('/healthcheck', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/user', userRoutes);
-
-// Setup Socket handlers
-setupSocketHandlers(io);
 
 // Error handler middleware
 app.use((err, req, res, next) => {
@@ -138,44 +110,61 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Server port - Glitch biasanya menggunakan process.env.PORT (3000)
-const PORT = process.env.PORT || config.port || 3000;
-
-// Start the server
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} in ${config.nodeEnv} mode`);
-  if (process.env.PROJECT_DOMAIN) {
-    console.log(`App URL: https://${process.env.PROJECT_DOMAIN}.glitch.me`);
-  }
-});
-
-// Keep-alive function untuk Glitch Free Tier
-const keepAlive = () => {
-  setInterval(() => {
-    console.log("Mengirim ping keep-alive...");
-    
-    // Gunakan URL Glitch Anda
-    const appUrl = process.env.PROJECT_DOMAIN 
-      ? `https://${process.env.PROJECT_DOMAIN}.glitch.me` 
-      : 'http://localhost:' + PORT;
-    
-    // Ping diri sendiri
-    https.get(`${appUrl}/healthcheck`, (res) => {
-      console.log(`Keep-alive status: ${res.statusCode}`);
-    }).on('error', (err) => {
-      console.error('Keep-alive request failed:', err.message);
-    });
-  }, 280000); // 4.6 menit (Glitch timeout pada 5 menit)
-};
-
-// Aktifkan keep-alive di production
-if (process.env.NODE_ENV === 'production') {
-  keepAlive();
+// For local development, start the server normally
+if (!process.env.VERCEL) {
+  // Connect to database
+  connectDB();
+  
+  // Server port
+  const PORT = process.env.PORT || config.port || 3000;
+  
+  // Create HTTP server and Socket.io setup ONLY for non-Vercel environment
+  const http = require('http');
+  const socketIO = require('socket.io');
+  const setupSocketHandlers = require('./socket/socketHandler');
+  
+  const server = http.createServer(app);
+  
+  const io = socketIO(server, {
+    cors: {
+      origin: [
+        'http://localhost:3000', 
+        'https://aidilsaputrakirsan.github.io'
+      ],
+      methods: ["GET", "POST"],
+      credentials: true
+    },
+    transports: ['websocket', 'polling']
+  });
+  
+  // Setup Socket handlers
+  setupSocketHandlers(io);
+  
+  // Start the server
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT} in ${config.nodeEnv} mode`);
+  });
+  
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (err, promise) => {
+    console.log(`Error: ${err.message}`);
+    console.error(err);
+  });
+} else {
+  // In Vercel, we'll connect to MongoDB for each request
+  // This runs before each API route in the serverless environment
+  app.use(async (req, res, next) => {
+    if (!req.path.startsWith('/_next') && !req.path.startsWith('/static')) {
+      try {
+        await connectDB();
+      } catch (err) {
+        console.error('Failed to connect to database in middleware:', err);
+        // Continue anyway - let the route handlers deal with it
+      }
+    }
+    next();
+  });
 }
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
-  console.log(`Error: ${err.message}`);
-  // Log error only but keep the server running
-  console.error(err);
-});
+// Export for Vercel serverless environment
+module.exports = app;
