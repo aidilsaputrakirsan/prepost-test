@@ -2,25 +2,54 @@
 import Pusher from 'pusher';
 import PusherClient from 'pusher-js';
 
-export const pusher = {
-  trigger: async () => true
+// Initialize Pusher server-side client
+export const pusher = new Pusher({
+  appId: process.env.PUSHER_APP_ID,
+  key: process.env.PUSHER_KEY,
+  secret: process.env.PUSHER_SECRET,
+  cluster: process.env.PUSHER_CLUSTER,
+  useTLS: true,
+});
+
+// Initialize Pusher client-side
+let pusherClient;
+
+// Only initialize on client-side to avoid SSR issues
+if (typeof window !== 'undefined') {
+  pusherClient = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_KEY, {
+    cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
+    authEndpoint: '/api/pusher/auth',
+  });
+} else {
+  // Placeholder for server-side
+  pusherClient = {
+    subscribe: () => ({
+      bind: () => {},
+      unbind: () => {},
+    })
+  };
+}
+
+export { pusherClient };
+
+// Helper function to trigger events
+export const triggerEvent = async (channel, event, data) => {
+  try {
+    await pusher.trigger(channel, event, data);
+    return true;
+  } catch (error) {
+    console.error('Error triggering Pusher event:', error);
+    return false;
+  }
 };
 
-export const pusherClient = {
-  subscribe: () => ({
-    bind: () => {},
-    unbind: () => {}
-  })
-};
-
-export const triggerEvent = async () => true;
-
+// Channel naming convention
 export const channelNames = {
   quiz: (quizId) => `quiz-${quizId}`,
-  admin: (quizId) => `admin-${quizId}`,
+  admin: (quizId) => `private-admin-${quizId}`,
 };
 
-// Define event names
+// Standard event names
 export const eventNames = {
   // Quiz events
   quizStarted: 'quiz-started',
