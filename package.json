@@ -8,7 +8,7 @@
         "dev": "nodemon server/server.js"
     },
     "engines": {
-        "node": "16.x"
+        "node": "18.x"
     },
     "author": "Aidil Saputra Kirsan",
     "license": "MIT",
