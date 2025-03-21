@@ -20,7 +20,7 @@ const setupSocketHandlers = require('./socket/socketHandler');
 const app = express();
 const server = http.createServer(app);
 
-// Socket.io setup with updated CORS for GitHub Pages
+// Socket.io setup untuk Render
 const io = socketIO(server, {
   cors: {
     origin: [
@@ -29,7 +29,8 @@ const io = socketIO(server, {
     ],
     methods: ["GET", "POST"],
     credentials: true
-  }
+  },
+  transports: ['websocket', 'polling'] // Penting: Dukung kedua transport methods
 });
 
 // Basic middleware
@@ -39,18 +40,19 @@ app.use(express.urlencoded({ extended: true }));
 // Enhanced CORS for production
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if(!origin) return callback(null, true);
-    
     const allowedOrigins = [
       'http://localhost:3000',
       'https://aidilsaputrakirsan.github.io'
     ];
     
-    if(allowedOrigins.indexOf(origin) !== -1) {
-      return callback(null, true);
+    // Izinkan permintaan tanpa origin (misal dari Postman)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
     } else {
-      return callback(null, true); // For development, allow all origins
+      console.log('Origin ditolak oleh CORS:', origin);
+      callback(null, true); // Untuk debugging, izinkan semua origin
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -139,21 +141,17 @@ server.listen(PORT, () => {
 // Keep-alive function untuk Back4App Free Tier
 const keepAlive = () => {
   setInterval(() => {
-    console.log("Keeping the application alive...");
-    
-    // Use the container's URL from Back4App
-    const appUrl = process.env.APP_URL || 'https://your-back4app-container-url.back4app.io';
-    
-    // Make HTTP request to our healthcheck endpoint
+    console.log("Mengirim ping keep-alive...");
+    const appUrl = process.env.RENDER_EXTERNAL_URL || 'https://your-app-name.onrender.com';
     https.get(`${appUrl}/healthcheck`, (res) => {
       console.log(`Keep-alive status: ${res.statusCode}`);
     }).on('error', (err) => {
-      console.error('Keep-alive request failed:', err.message);
+      console.error('Keep-alive request error:', err.message);
     });
-  }, 840000); // 14 menit - Back4App timeout pada 20 menit
+  }, 840000); // 14 menit (Render free tier timeout pada 15 menit)
 };
 
-// Aktifkan keep-aliv e di production
+// Aktifkan keep-alive di production
 if (process.env.NODE_ENV === 'production') {
   keepAlive();
 }
