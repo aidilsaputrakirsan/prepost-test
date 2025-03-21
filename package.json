@@ -5,26 +5,22 @@
     "main": "server/server.js",
     "scripts": {
         "start": "node server/server.js",
-        "server": "nodemon server/server.js",
-        "client": "npm start --prefix client",
-        "dev": "concurrently \"npm run server\" \"npm run client\"",
-        "install-server": "npm install --prefix server",
-        "install-client": "npm install --prefix client",
-        "install-all": "npm install && npm run install-server && npm run install-client",
-        "build-client": "npm run build --prefix client",
-        "heroku-postbuild": "NPM_CONFIG_PRODUCTION=false npm run install-client && npm run build-client",
-        "create-admin": "node server/scripts/createAdmin.js",
-        "debug-db": "node server/scripts/debugConnection.js",
-        "create-admin-quiz-app": "node server/scripts/createAdminCustom.js quiz_app",
-        "fix-db": "node server/scripts/fixDatabase.js",
-        "check-db": "node server/scripts/checkDatabase.js",
-        "fix-leaderboard": "node server/scripts/fixLeaderboard.js",
-        "fix-leaderboard-index": "node server/scripts/fixLeaderboardIndex.js"
+        "dev": "nodemon server/server.js"
+    },
+    "engines": {
+        "node": "16.x"
     },
     "author": "Aidil Saputra Kirsan",
     "license": "MIT",
     "dependencies": {
-        "concurrently": "^7.6.0"
+        "bcryptjs": "^2.4.3",
+        "cors": "^2.8.5",
+        "dotenv": "^16.0.3",
+        "express": "^4.18.2",
+        "express-async-handler": "^1.2.0",
+        "jsonwebtoken": "^9.0.0",
+        "mongoose": "^7.0.3",
+        "socket.io": "^4.6.1"
     },
     "devDependencies": {
         "nodemon": "^3.1.9"
