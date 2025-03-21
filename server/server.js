@@ -1,7 +1,10 @@
 // server/server.js
 const express = require('express');
+const http = require('http');
+const https = require('https');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const socketIO = require('socket.io');
 const path = require('path');
 const config = require('./config/config');
 
@@ -10,48 +13,100 @@ const authRoutes = require('./routes/authRoutes');
 const quizRoutes = require('./routes/quizRoutes');
 const userRoutes = require('./routes/userRoutes');
 
+// Socket handler
+const setupSocketHandlers = require('./socket/socketHandler');
+
 // Create Express app
 const app = express();
+const server = http.createServer(app);
+
+// Socket.io setup untuk Glitch
+const io = socketIO(server, {
+  cors: {
+    origin: [
+      'http://localhost:3000', 
+      'https://aidilsaputrakirsan.github.io'
+    ],
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling'] // Penting: Dukung kedua transport methods
+});
 
 // Basic middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Configure CORS
+// Enhanced CORS for production
 app.use(cors({
-  origin: config.allowedOrigins,
+  origin: function(origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'https://aidilsaputrakirsan.github.io'
+    ];
+    
+    // Tambahkan domain Glitch ke allowed origins
+    if (process.env.PROJECT_DOMAIN) {
+      allowedOrigins.push(`https://${process.env.PROJECT_DOMAIN}.glitch.me`);
+    }
+    
+    // Izinkan permintaan tanpa origin (misal dari Postman)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      console.log('Origin ditolak oleh CORS:', origin);
+      callback(null, true); // Untuk debugging, izinkan semua origin
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true
 }));
 
-// Database connection - Use connection per request for serverless
+// Database connection with retry
 const connectDB = async () => {
-  // Skip if already connected
-  if (mongoose.connection.readyState === 1) {
-    return;
-  }
-  
-  try {
-    await mongoose.connect(config.mongoURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    console.log('MongoDB connected');
-  } catch (err) {
-    console.error('MongoDB connection error:', err.message);
-    // Don't throw error - let routes handle failures
+  const MAX_RETRIES = 5;
+  let retries = 0;
+  let connected = false;
+
+  while (!connected && retries < MAX_RETRIES) {
+    try {
+      console.log(`MongoDB connection attempt ${retries + 1}...`);
+      
+      if (!config.mongoURI) {
+        throw new Error('MongoDB URI is undefined in config');
+      }
+      
+      await mongoose.connect(config.mongoURI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        serverSelectionTimeoutMS: 5000, // 5 seconds timeout
+      });
+      
+      console.log('MongoDB connected successfully');
+      connected = true;
+    } catch (err) {
+      retries++;
+      console.error(`MongoDB connection error (attempt ${retries}):`, err.message);
+      
+      if (retries < MAX_RETRIES) {
+        console.log(`Retrying in 5 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+      } else {
+        console.error(`Failed to connect to MongoDB after ${MAX_RETRIES} attempts`);
+        
+        // Don't exit in development mode
+        if (config.nodeEnv === 'production') {
+          console.warn('Running without database connection. Some features will not work.');
+        }
+      }
+    }
   }
 };
 
-// Connect to database for each request (serverless pattern)
-app.use(async (req, res, next) => {
-  try {
-    await connectDB();
-    next();
-  } catch (err) {
-    next(err);
-  }
-});
+// Connect to database
+connectDB();
 
 // Health check endpoint
 app.get('/healthcheck', (req, res) => {
@@ -60,8 +115,8 @@ app.get('/healthcheck', (req, res) => {
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV,
     service: 'PrePostTEST API',
-    dbStatus: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-    hosting: 'Vercel'
+    hosting: 'Glitch',
+    project: process.env.PROJECT_DOMAIN || 'local'
   });
 });
 
@@ -70,13 +125,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/user', userRoutes);
 
-// Root route for testing
-app.get('/', (req, res) => {
-  res.status(200).json({
-    message: 'PrePostTEST API is running',
-    env: process.env.NODE_ENV
-  });
-});
+// Setup Socket handlers
+setupSocketHandlers(io);
 
 // Error handler middleware
 app.use((err, req, res, next) => {
@@ -88,13 +138,44 @@ app.use((err, req, res, next) => {
   });
 });
 
-// For local development only
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT} in ${config.nodeEnv} mode`);
-  });
+// Server port - Glitch biasanya menggunakan process.env.PORT (3000)
+const PORT = process.env.PORT || config.port || 3000;
+
+// Start the server
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT} in ${config.nodeEnv} mode`);
+  if (process.env.PROJECT_DOMAIN) {
+    console.log(`App URL: https://${process.env.PROJECT_DOMAIN}.glitch.me`);
+  }
+});
+
+// Keep-alive function untuk Glitch Free Tier
+const keepAlive = () => {
+  setInterval(() => {
+    console.log("Mengirim ping keep-alive...");
+    
+    // Gunakan URL Glitch Anda
+    const appUrl = process.env.PROJECT_DOMAIN 
+      ? `https://${process.env.PROJECT_DOMAIN}.glitch.me` 
+      : 'http://localhost:' + PORT;
+    
+    // Ping diri sendiri
+    https.get(`${appUrl}/healthcheck`, (res) => {
+      console.log(`Keep-alive status: ${res.statusCode}`);
+    }).on('error', (err) => {
+      console.error('Keep-alive request failed:', err.message);
+    });
+  }, 280000); // 4.6 menit (Glitch timeout pada 5 menit)
+};
+
+// Aktifkan keep-alive di production
+if (process.env.NODE_ENV === 'production') {
+  keepAlive();
 }
 
-// Export the Express app for Vercel
-module.exports = app;
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err, promise) => {
+  console.log(`Error: ${err.message}`);
+  // Log error only but keep the server running
+  console.error(err);
+});
