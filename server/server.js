@@ -20,7 +20,7 @@ const setupSocketHandlers = require('./socket/socketHandler');
 const app = express();
 const server = http.createServer(app);
 
-// Socket.io setup untuk Render
+// Socket.io setup untuk Glitch
 const io = socketIO(server, {
   cors: {
     origin: [
@@ -44,6 +44,11 @@ app.use(cors({
       'http://localhost:3000',
       'https://aidilsaputrakirsan.github.io'
     ];
+    
+    // Tambahkan domain Glitch ke allowed origins
+    if (process.env.PROJECT_DOMAIN) {
+      allowedOrigins.push(`https://${process.env.PROJECT_DOMAIN}.glitch.me`);
+    }
     
     // Izinkan permintaan tanpa origin (misal dari Postman)
     if (!origin) return callback(null, true);
@@ -108,7 +113,10 @@ app.get('/healthcheck', (req, res) => {
   res.status(200).json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV
+    env: process.env.NODE_ENV,
+    service: 'PrePostTEST API',
+    hosting: 'Glitch',
+    project: process.env.PROJECT_DOMAIN || 'local'
   });
 });
 
@@ -130,25 +138,34 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Server port
-const PORT = process.env.PORT || config.port || 5000;
+// Server port - Glitch biasanya menggunakan process.env.PORT (3000)
+const PORT = process.env.PORT || config.port || 3000;
 
 // Start the server
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT} in ${config.nodeEnv} mode`);
+  if (process.env.PROJECT_DOMAIN) {
+    console.log(`App URL: https://${process.env.PROJECT_DOMAIN}.glitch.me`);
+  }
 });
 
-// Keep-alive function untuk Back4App Free Tier
+// Keep-alive function untuk Glitch Free Tier
 const keepAlive = () => {
   setInterval(() => {
     console.log("Mengirim ping keep-alive...");
-    const appUrl = process.env.RENDER_EXTERNAL_URL || 'https://your-app-name.onrender.com';
+    
+    // Gunakan URL Glitch Anda
+    const appUrl = process.env.PROJECT_DOMAIN 
+      ? `https://${process.env.PROJECT_DOMAIN}.glitch.me` 
+      : 'http://localhost:' + PORT;
+    
+    // Ping diri sendiri
     https.get(`${appUrl}/healthcheck`, (res) => {
       console.log(`Keep-alive status: ${res.statusCode}`);
     }).on('error', (err) => {
-      console.error('Keep-alive request error:', err.message);
+      console.error('Keep-alive request failed:', err.message);
     });
-  }, 840000); // 14 menit (Render free tier timeout pada 15 menit)
+  }, 280000); // 4.6 menit (Glitch timeout pada 5 menit)
 };
 
 // Aktifkan keep-alive di production
