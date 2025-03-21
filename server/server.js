@@ -1,6 +1,7 @@
 // server/server.js
 const express = require('express');
 const http = require('http');
+const https = require('https');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const socketIO = require('socket.io');
@@ -19,42 +20,42 @@ const setupSocketHandlers = require('./socket/socketHandler');
 const app = express();
 const server = http.createServer(app);
 
-// Socket.io setup
+// Socket.io setup with updated CORS for GitHub Pages
 const io = socketIO(server, {
   cors: {
     origin: [
       'http://localhost:3000', 
       'https://aidilsaputrakirsan.github.io'
     ],
+    methods: ["GET", "POST"],
     credentials: true
   }
-})
+});
 
 // Basic middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Enhanced CORS for Vercel in production
-if (config.nodeEnv === 'production') {
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    if (req.method === 'OPTIONS') {
-      res.header('Access-Control-Allow-Methods', 'PUT, POST, PATCH, DELETE, GET');
-      return res.status(200).json({});
-    }
-    next();
-  });
-} else {
-  // Development CORS
-  app.use(cors({
-    origin: [
+// Enhanced CORS for production
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if(!origin) return callback(null, true);
+    
+    const allowedOrigins = [
       'http://localhost:3000',
       'https://aidilsaputrakirsan.github.io'
-    ],
-    credentials: true
-  }));
-}
+    ];
+    
+    if(allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    } else {
+      return callback(null, true); // For development, allow all origins
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true
+}));
 
 // Database connection with retry
 const connectDB = async () => {
@@ -90,8 +91,6 @@ const connectDB = async () => {
         
         // Don't exit in development mode
         if (config.nodeEnv === 'production') {
-          process.exit(1);
-        } else {
           console.warn('Running without database connection. Some features will not work.');
         }
       }
@@ -102,7 +101,16 @@ const connectDB = async () => {
 // Connect to database
 connectDB();
 
-// API Routes - these should come before the catch-all route
+// Health check endpoint
+app.get('/healthcheck', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV
+  });
+});
+
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/user', userRoutes);
@@ -120,57 +128,39 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Serve static assets in production - MUST come after API routes
-if (config.nodeEnv === 'production') {
-  // Serve static files
-  app.use(express.static(path.join(__dirname, '../client/build')));
-  
-  // This must be the LAST route handler - catches all other requests
-  app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../client/build', 'index.html'));
-  });
-}
-
-// Server port - use the provided port or default to 5000
+// Server port
 const PORT = process.env.PORT || config.port || 5000;
 
-// For Vercel serverless deployment - export the app
-if (process.env.VERCEL) {
-  // In Vercel environment, export the app
-  module.exports = app;
-} else {
-  // For regular deployment, start the server
-  server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT} in ${config.nodeEnv} mode`);
-  });
+// Start the server
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT} in ${config.nodeEnv} mode`);
+});
+
+// Keep-alive function untuk Back4App Free Tier
+const keepAlive = () => {
+  setInterval(() => {
+    console.log("Keeping the application alive...");
+    
+    // Use the container's URL from Back4App
+    const appUrl = process.env.APP_URL || 'https://your-back4app-container-url.back4app.io';
+    
+    // Make HTTP request to our healthcheck endpoint
+    https.get(`${appUrl}/healthcheck`, (res) => {
+      console.log(`Keep-alive status: ${res.statusCode}`);
+    }).on('error', (err) => {
+      console.error('Keep-alive request failed:', err.message);
+    });
+  }, 840000); // 14 menit - Back4App timeout pada 20 menit
+};
+
+// Aktifkan keep-aliv e di production
+if (process.env.NODE_ENV === 'production') {
+  keepAlive();
 }
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {
   console.log(`Error: ${err.message}`);
-  // Don't close server for development
-  if (config.nodeEnv === 'production') {
-    server.close(() => process.exit(1));
-  }
+  // Log error only but keep the server running
+  console.error(err);
 });
-
-// Tambahkan di bagian bawah file
-app.get('/healthcheck', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// Keep-alive function
-const keepAlive = () => {
-  setInterval(() => {
-    console.log("Keeping the application alive...");
-    const appUrl = process.env.REPL_SLUG 
-      ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
-      : 'https://your-app-url.com';
-    https.get(`${appUrl}/healthcheck`);
-  }, 280000); // ~4.6 menit
-};
-
-// Aktifkan keep-alive
-if (process.env.NODE_ENV === 'production') {
-  keepAlive();
-}
