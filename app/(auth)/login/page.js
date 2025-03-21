@@ -78,7 +78,7 @@ export default function Login() {
           
           {error && (
             <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-              {error}
+              {typeof error === 'string' ? error : 'Invalid email or password'}
             </div>
           )}
           
