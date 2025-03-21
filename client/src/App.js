@@ -30,7 +30,7 @@ import './styles.css';
 
 const App = () => {
   return (
-    <Router>
+    <Router basename="/PrePost-Test">
       <AuthProvider>
         <QuizProvider>
           <div className="app-container">

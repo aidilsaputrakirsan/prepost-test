@@ -22,13 +22,13 @@ const server = http.createServer(app);
 // Socket.io setup
 const io = socketIO(server, {
   cors: {
-    origin: config.nodeEnv === 'production'
-      ? config.allowedOrigins
-      : ['http://localhost:3000'],
-    methods: ['GET', 'POST'],
+    origin: [
+      'http://localhost:3000', 
+      'https://aidilsaputrakirsan.github.io'
+    ],
     credentials: true
   }
-});
+})
 
 // Basic middleware
 app.use(express.json());
@@ -48,7 +48,10 @@ if (config.nodeEnv === 'production') {
 } else {
   // Development CORS
   app.use(cors({
-    origin: '*',
+    origin: [
+      'http://localhost:3000',
+      'https://aidilsaputrakirsan.github.io'
+    ],
     credentials: true
   }));
 }
@@ -150,3 +153,24 @@ process.on('unhandledRejection', (err, promise) => {
     server.close(() => process.exit(1));
   }
 });
+
+// Tambahkan di bagian bawah file
+app.get('/healthcheck', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Keep-alive function
+const keepAlive = () => {
+  setInterval(() => {
+    console.log("Keeping the application alive...");
+    const appUrl = process.env.REPL_SLUG 
+      ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+      : 'https://your-app-url.com';
+    https.get(`${appUrl}/healthcheck`);
+  }, 280000); // ~4.6 menit
+};
+
+// Aktifkan keep-alive
+if (process.env.NODE_ENV === 'production') {
+  keepAlive();
+}
