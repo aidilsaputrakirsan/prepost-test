@@ -132,16 +132,16 @@ export const AuthProvider = ({ children }) => {
         },
         body: JSON.stringify({ name, quizId })
       });
-
+  
       const data = await response.json();
-
+  
       if (!response.ok) {
         return {
           success: false,
           message: data.message || 'Failed to join quiz'
         };
       }
-
+  
       // Set user data locally
       const userData = {
         id: data.data._id,
@@ -151,21 +151,35 @@ export const AuthProvider = ({ children }) => {
         isAdmin: false
       };
       
+      // Update context
       setUser(userData);
       
-      // Save user data to localStorage for persistence
-      localStorage.setItem('quiz_user', JSON.stringify(userData));
-      
-      // Add a custom header to future requests
-      if (typeof window !== 'undefined') {
-        const originalFetch = window.fetch;
-        window.fetch = function(url, options = {}) {
-          options.headers = options.headers || {};
-          options.headers['x-has-local-storage'] = 'true';
-          return originalFetch(url, options);
-        };
+      // Enhanced localStorage storage
+      try {
+        // Save user data
+        localStorage.setItem('quiz_user', JSON.stringify(userData));
+        
+        // Save quiz status
+        localStorage.setItem('quiz_status', 'waiting');
+        localStorage.setItem('quiz_id', quizId);
+        
+        console.log("User and quiz data stored in localStorage");
+        
+        // Add a custom header to all future XHR requests
+        if (typeof window !== 'undefined') {
+          const originalFetch = window.fetch;
+          window.fetch = function(url, options = {}) {
+            options.headers = options.headers || {};
+            options.headers['x-participant-id'] = userData.id;
+            options.headers['x-quiz-id'] = quizId;
+            options.headers['x-has-local-storage'] = 'true';
+            return originalFetch(url, options);
+          };
+        }
+      } catch (e) {
+        console.error("Error storing user data:", e);
       }
-
+  
       return {
         success: true,
         data: data.data

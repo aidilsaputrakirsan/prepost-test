@@ -35,18 +35,50 @@ export default function QuizQuestion({ params }) {
   }, [quizError]);
 
   // Redirect if not logged in
-  useEffect(() => {
-    if (!user) {
-      router.push(`/join/${quizId}`);
-      return;
+useEffect(() => {
+  if (!user) {
+    console.log("No user found in context, checking localStorage");
+    
+    // Check localStorage as fallback
+    try {
+      const storedUser = localStorage.getItem('quiz_user');
+      const storedStatus = localStorage.getItem('quiz_status');
+      const storedQuizId = localStorage.getItem('quiz_id');
+      
+      console.log("localStorage check:", {
+        user: storedUser ? "Found" : "Not found",
+        status: storedStatus,
+        quizId: storedQuizId
+      });
+      
+      // If we have data in localStorage but not in context, reload the page
+      // This helps recover from context resets
+      if (storedUser && storedStatus === 'active' && storedQuizId === quizId) {
+        console.log("Found user data in localStorage, reloading context");
+        window.location.reload();
+        return;
+      }
+    } catch (e) {
+      console.error("localStorage check error:", e);
     }
+    
+    // If no user in context or localStorage, redirect to join
+    console.log("No user data found, redirecting to join page");
+    router.push(`/join/${quizId}`);
+    return;
+  }
 
-    if (quizStatus === 'waiting') {
-      router.push(`/waiting-room/${quizId}`);
-    } else if (quizStatus === 'finished') {
-      router.push(`/results/${quizId}`);
-    }
-  }, [user, quizStatus, router, quizId]);
+  // Modified quiz status handling
+  if (quizStatus === 'waiting' && user) {
+    console.log("Quiz is in waiting state, redirecting to waiting room");
+    router.push(`/waiting-room/${quizId}`);
+  } else if (quizStatus === 'finished' && user) {
+    console.log("Quiz is finished, redirecting to results");
+    router.push(`/results/${quizId}`);
+  } else {
+    console.log("Current quiz status:", quizStatus);
+  }
+}, [user, quizStatus, router, quizId]);
 
   // Reset startTime when a new question is received
   useEffect(() => {

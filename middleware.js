@@ -65,15 +65,29 @@ export async function middleware(request) {
   if (userProtectedRoutes.some(route => pathname.startsWith(route))) {
     // Check for client-side stored participant data
     const hasLocalStorage = request.headers.get('x-has-local-storage') === 'true';
-    console.log("Has local storage:", hasLocalStorage);
-
+    const participantId = request.headers.get('x-participant-id');
+    const quizId = request.headers.get('x-quiz-id');
+    
+    console.log("Middleware quiz route check:", {
+      hasLocalStorage,
+      participantId,
+      quizId,
+      pathname
+    });
+    
     if (!token && !hasLocalStorage) {
-      console.log("Redirecting to home - no token for protected route");
+      console.log("No authentication found for protected route");
       
       // Special case for waiting room - redirect to join page with quiz ID
       if (pathname.startsWith('/waiting-room/')) {
-        const quizId = pathname.split('/')[2];
-        return NextResponse.redirect(new URL(`/join/${quizId}`, request.url));
+        const pathQuizId = pathname.split('/')[2];
+        return NextResponse.redirect(new URL(`/join/${pathQuizId}`, request.url));
+      }
+      
+      // Special case for quiz page - redirect to join page with quiz ID
+      if (pathname.startsWith('/quiz/')) {
+        const pathQuizId = pathname.split('/')[2];
+        return NextResponse.redirect(new URL(`/join/${pathQuizId}`, request.url));
       }
       
       return NextResponse.redirect(new URL("/", request.url));

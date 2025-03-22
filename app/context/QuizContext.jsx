@@ -286,18 +286,40 @@ export const QuizProvider = ({ children }) => {
   };
   
   // Listen for Pusher events
-useEvent(eventNames.quizStarted, (data) => {
-  console.log("Quiz started event received:", data);
-  setQuizStatus('active');
-  setAnswer(null);
-  setAnswerResult(null);
-  
-  // Force redirect to quiz page
-  if (quizId && typeof window !== 'undefined') {
-    console.log("Redirecting to quiz page:", `/quiz/${quizId}`);
-    window.location.href = `/quiz/${quizId}`;
-  }
-});
+  useEvent(eventNames.quizStarted, (data) => {
+    console.log("Quiz started event received:", data);
+    
+    // First, update state immediately
+    setQuizStatus('active');
+    setAnswer(null);
+    setAnswerResult(null);
+    
+    // Force store quiz status in localStorage for persistence
+    if (typeof window !== 'undefined') {
+      try {
+        // Store quiz status to prevent it from being lost
+        localStorage.setItem('quiz_status', 'active');
+        localStorage.setItem('quiz_id', quizId);
+        
+        // Log for debugging
+        console.log("Quiz data stored in localStorage:", quizId);
+        
+        // Ensure user data is still in localStorage
+        const userData = localStorage.getItem('quiz_user');
+        console.log("User data in localStorage:", userData ? "Present" : "Missing");
+        
+        // Add a slight delay for state updates to propagate
+        setTimeout(() => {
+          console.log("Navigating to quiz page:", `/quiz/${quizId}`);
+          window.location.href = `/quiz/${quizId}`;
+        }, 300);
+      } catch (err) {
+        console.error("LocalStorage error:", err);
+        // Fallback direct navigation
+        window.location.href = `/quiz/${quizId}`;
+      }
+    }
+  });
 
 useEvent(eventNames.quizStopped, (data) => {
   console.log("Quiz stopped event received:", data);
