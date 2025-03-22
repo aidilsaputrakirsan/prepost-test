@@ -83,11 +83,16 @@ export default function usePusher(quizId) {
   const bind = useCallback((eventName, callback) => {
     if (!channel) return () => {};
     
-    console.log(`Binding to event '${eventName}' on channel:`, channel);
+    console.log(`Binding to event '${eventName}' on channel:`, channel.name);
     
-    channel.bind(eventName, callback);
+    const wrappedCallback = (data) => {
+      console.log(`Received event '${eventName}':`, data);
+      callback(data);
+    };
+    
+    channel.bind(eventName, wrappedCallback);
     return () => {
-      channel.unbind(eventName, callback);
+      channel.unbind(eventName, wrappedCallback);
     };
   }, [channel]);
   

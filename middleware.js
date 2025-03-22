@@ -64,9 +64,9 @@ export async function middleware(request) {
   // Check user protected routes
   if (userProtectedRoutes.some(route => pathname.startsWith(route))) {
     // Check for client-side stored participant data
-    const cookies = request.cookies;
     const hasLocalStorage = request.headers.get('x-has-local-storage') === 'true';
-    
+    console.log("Has local storage:", hasLocalStorage);
+
     if (!token && !hasLocalStorage) {
       console.log("Redirecting to home - no token for protected route");
       

@@ -2,13 +2,13 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/lib/db";
 import QuizState from "@/app/models/QuizState";
-import Question from "@/app/models/Question"; // Make sure this import is included
+import Question from "@/app/models/Question"; 
 
 // Get quiz by ID
 export async function GET(request, { params }) {
   try {
-    // Fix: Ensure params is awaited and properly accessed
-    const quizId = params.id;
+    // Access parameter directly without destructuring
+    const quizId = String(params?.id || '');
     
     await connectToDatabase();
     

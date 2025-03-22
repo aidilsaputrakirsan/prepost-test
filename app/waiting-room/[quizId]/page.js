@@ -61,6 +61,7 @@ export default function WaitingRoom({ params }) {
     if (user && connected && !joined) {
       joinWaitingRoom(quizId);
       setJoined(true);
+      localStorage.setItem('quiz_user', JSON.stringify(user));
     }
   }, [user, quizId, joinWaitingRoom, connected, joined]);
 

@@ -8,7 +8,8 @@ import { pusher, channelNames, eventNames } from "@/app/lib/pusher";
 
 export async function POST(request, { params }) {
   try {
-    const quizId = params.id;
+    const { id } = params;
+    const quizId = id;
     const session = await getServerSession(authOptions);
     
     if (!session || !session.user.isAdmin) {

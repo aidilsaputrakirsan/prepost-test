@@ -2,8 +2,8 @@
 import Pusher from 'pusher';
 import PusherClient from 'pusher-js';
 
-// Environment variables
-const appId = process.env.NEXT_PUBLIC_PUSHER_APP_ID || '12345';
+// Environment variables - FIXED to use the correct variable names
+const appId = process.env.PUSHER_APP_ID || '12345';
 const key = process.env.NEXT_PUBLIC_PUSHER_KEY || 'mock-key';
 const secret = process.env.PUSHER_SECRET || 'mock-secret';
 const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'eu';

@@ -294,6 +294,7 @@ useEvent(eventNames.quizStarted, (data) => {
   
   // Force redirect to quiz page
   if (quizId && typeof window !== 'undefined') {
+    console.log("Redirecting to quiz page:", `/quiz/${quizId}`);
     window.location.href = `/quiz/${quizId}`;
   }
 });
