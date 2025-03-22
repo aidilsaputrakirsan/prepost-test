@@ -24,16 +24,32 @@ export async function GET(request, { params }) {
       );
     }
     
-    if (quiz.status !== 'active' || quiz.questions.length === 0) {
-      console.log(`No active question for quiz: ${quizId}, status: ${quiz.status}`);
+    if (quiz.status !== 'active') {
+      console.log(`Quiz is not active: ${quizId}, status: ${quiz.status}`);
       return NextResponse.json(
-        { success: false, message: "No active question" },
+        { success: false, message: `Quiz is in ${quiz.status} status` },
+        { status: 400 }
+      );
+    }
+    
+    if (quiz.questions.length === 0) {
+      console.log(`No questions for quiz: ${quizId}`);
+      return NextResponse.json(
+        { success: false, message: "No questions available" },
         { status: 400 }
       );
     }
     
     const currentQuestionIndex = quiz.currentQuestionIndex || 0;
     console.log(`Current question index: ${currentQuestionIndex}`);
+    
+    if (currentQuestionIndex >= quiz.questions.length) {
+      console.log(`Invalid question index: ${currentQuestionIndex}`);
+      return NextResponse.json(
+        { success: false, message: "Invalid question index" },
+        { status: 400 }
+      );
+    }
     
     const question = await Question.findById(quiz.questions[currentQuestionIndex]);
     

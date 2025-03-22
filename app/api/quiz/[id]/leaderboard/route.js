@@ -5,6 +5,7 @@ import Leaderboard from "@/app/models/Leaderboard";
 import QuizState from "@/app/models/QuizState";
 import Answer from "@/app/models/Answer";
 import User from "@/app/models/User";
+import Question from "@/app/models/Question";
 
 export async function GET(request, { params }) {
   try {
@@ -14,6 +15,8 @@ export async function GET(request, { params }) {
     
     await connectToDatabase();
     
+    console.log(`Getting leaderboard for quiz: ${quizId}`);
+    
     // Try to find existing leaderboard
     let leaderboard = await Leaderboard.findOne({ quiz: quizId })
       .populate('entries.user', 'name')
@@ -21,6 +24,8 @@ export async function GET(request, { params }) {
     
     // If no leaderboard exists, calculate it
     if (!leaderboard) {
+      console.log("No existing leaderboard, creating one");
+      
       const quiz = await QuizState.findById(quizId)
         .populate('questions participants')
         .exec();
@@ -34,11 +39,13 @@ export async function GET(request, { params }) {
       
       // Get answers
       const answers = await Answer.find({ quiz: quizId }).exec();
+      console.log(`Found ${answers.length} answers`);
       
       // Get participants
       const participants = await User.find({ 
         _id: { $in: quiz.participants } 
       }).select('_id name score');
+      console.log(`Found ${participants.length} participants`);
       
       // Calculate scores
       const entries = [];
@@ -58,9 +65,12 @@ export async function GET(request, { params }) {
         // Speed bonus
         const speedBonus = userAnswers.reduce((bonus, answer) => {
           if (answer.isCorrect) {
+            // Find the question
             const question = quiz.questions.find(q => 
               q._id.toString() === answer.question.toString()
             );
+            
+            // Default to 15 seconds if question not found
             const timeLimit = question ? question.timeLimit * 1000 : 15000;
             
             return bonus + Math.max(0, Math.round(50 * (1 - (answer.responseTime / timeLimit))));
@@ -68,6 +78,7 @@ export async function GET(request, { params }) {
           return bonus;
         }, 0);
         
+        // Calculate total score
         const totalScore = baseScore + speedBonus;
         
         const entry = {
@@ -99,6 +110,7 @@ export async function GET(request, { params }) {
       
       // Save leaderboard
       try {
+        console.log("Saving leaderboard to database");
         await Leaderboard.create({
           quiz: quizId,
           entries: entries
@@ -106,6 +118,8 @@ export async function GET(request, { params }) {
       } catch (error) {
         console.warn('Could not save leaderboard:', error.message);
       }
+    } else {
+      console.log("Using existing leaderboard");
     }
     
     return NextResponse.json({

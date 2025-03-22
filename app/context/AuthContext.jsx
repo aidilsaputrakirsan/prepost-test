@@ -79,26 +79,31 @@ export const AuthProvider = ({ children }) => {
           if (typeof window !== 'undefined') {
             const originalFetch = window.fetch;
             window.fetch = function(url, options = {}) {
-              // Create fresh headers object if not provided
-              if (!options.headers) {
-                options.headers = {};
-              } else if (options.headers instanceof Headers) {
-                // Convert Headers object to plain object
-                const plainHeaders = {};
-                for (const [key, value] of options.headers.entries()) {
-                  plainHeaders[key] = value;
+              // Create fresh headers object
+              let headers = {};
+              
+              if (options.headers) {
+                if (options.headers instanceof Headers) {
+                  // Convert Headers object to plain object
+                  for (const [key, value] of options.headers.entries()) {
+                    headers[key] = value;
+                  }
+                } else {
+                  headers = { ...options.headers };
                 }
-                options.headers = plainHeaders;
               }
               
               // Add authentication headers
-              options.headers['x-has-local-storage'] = 'true';
+              headers['x-has-local-storage'] = 'true';
               if (userData.id) {
-                options.headers['x-participant-id'] = userData.id;
+                headers['x-participant-id'] = userData.id;
               }
               if (storedQuizId) {
-                options.headers['x-quiz-id'] = storedQuizId;
+                headers['x-quiz-id'] = storedQuizId;
               }
+              
+              // Update options with new headers
+              options.headers = headers;
               
               return originalFetch(url, options);
             };
@@ -177,90 +182,104 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Create participant function (for joining quiz)
-  
-
-const createParticipant = async (name, quizId) => {
-  try {
-    const response = await fetch('/api/user', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ name, quizId })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return {
-        success: false,
-        message: data.message || 'Failed to join quiz'
-      };
-    }
-
-    // Set user data locally
-    const userData = {
-      id: data.data._id,
-      name: data.data.name,
-      currentQuiz: data.data.currentQuiz,
-      score: data.data.score,
-      isAdmin: false
-    };
-    
-    // Update context
-    setUser(userData);
-    
-    // Enhanced localStorage storage with proper error handling
+  const createParticipant = async (name, quizId) => {
     try {
-      // Save user data
-      localStorage.setItem('quiz_user', JSON.stringify(userData));
+      console.log(`Creating participant "${name}" for quiz ${quizId}`);
       
-      // Save quiz status
-      localStorage.setItem('quiz_status', 'waiting');
-      localStorage.setItem('quiz_id', quizId);
-      
-      console.log("User and quiz data stored in localStorage", userData);
-      
-      // Add a custom header to all future XHR requests
-      if (typeof window !== 'undefined') {
-        const originalFetch = window.fetch;
-        window.fetch = function(url, options = {}) {
-          // Create a new options object if none exists
-          options = options || {};
-          
-          // Create a new headers object
-          const headers = options.headers || {};
-          
-          // Add our authentication headers
-          headers['x-participant-id'] = userData.id;
-          headers['x-quiz-id'] = quizId;
-          headers['x-has-local-storage'] = 'true';
-          
-          // Update the options object
-          options.headers = headers;
-          
-          console.log(`Enhanced fetch called for ${url} with auth headers`);
-          
-          // Call the original fetch with modified options
-          return originalFetch(url, options);
+      const response = await fetch('/api/user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name, quizId })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("Failed to create participant:", data.message);
+        return {
+          success: false,
+          message: data.message || 'Failed to join quiz'
         };
       }
-    } catch (e) {
-      console.error("Error storing user data:", e);
-    }
 
-    return {
-      success: true,
-      data: data.data
-    };
-  } catch (error) {
-    console.error('Join quiz error:', error);
-    return {
-      success: false,
-      message: error.message || 'Failed to join quiz'
-    };
-  }
-};
+      console.log("Participant created successfully:", data.data);
+      
+      // Set user data locally
+      const userData = {
+        id: data.data._id,
+        name: data.data.name,
+        currentQuiz: data.data.currentQuiz,
+        score: data.data.score,
+        isAdmin: false
+      };
+      
+      // Update context
+      setUser(userData);
+      
+      // Enhanced localStorage storage with proper error handling
+      try {
+        // Save user data
+        safeLocalStorage.setItem('quiz_user', JSON.stringify(userData));
+        
+        // Save quiz status
+        safeLocalStorage.setItem('quiz_status', 'waiting');
+        safeLocalStorage.setItem('quiz_id', quizId);
+        
+        console.log("User and quiz data stored in localStorage", userData);
+        
+        // Set up fetch override with more robust error handling
+        if (typeof window !== 'undefined') {
+          const originalFetch = window.fetch;
+          window.fetch = function(url, options = {}) {
+            // Create a new options object if none exists
+            options = options || {};
+            
+            // Safely handle headers
+            let headers = {};
+            
+            if (options.headers) {
+              if (options.headers instanceof Headers) {
+                // Convert Headers object to plain object
+                for (const [key, value] of options.headers.entries()) {
+                  headers[key] = value;
+                }
+              } else {
+                headers = { ...options.headers };
+              }
+            }
+            
+            // Add our authentication headers
+            headers['x-participant-id'] = userData.id;
+            headers['x-quiz-id'] = quizId;
+            headers['x-has-local-storage'] = 'true';
+            
+            // Update the options object
+            options.headers = headers;
+            
+            console.log(`Enhanced fetch called for ${url}`);
+            
+            // Call the original fetch with modified options
+            return originalFetch(url, options);
+          };
+        }
+      } catch (e) {
+        console.error("Error storing user data:", e);
+      }
+
+      return {
+        success: true,
+        data: data.data
+      };
+    } catch (error) {
+      console.error('Join quiz error:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to join quiz'
+      };
+    }
+  };
 
   // Logout function
   const logout = async () => {

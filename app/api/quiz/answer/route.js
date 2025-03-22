@@ -54,6 +54,29 @@ export async function POST(request) {
       responseTime
     });
     
+    // Update user score - partial update for immediate feedback
+    if (isCorrect) {
+      try {
+        const baseScore = 100; // Base score for correct answer
+        
+        // Speed bonus (faster answer = more points)
+        const timeLimit = question.timeLimit * 1000; // Convert to ms
+        const speedBonus = Math.max(0, Math.round(50 * (1 - (responseTime / timeLimit))));
+        
+        const totalScore = baseScore + speedBonus;
+        
+        // Update the user's score - increment instead of set
+        await User.findByIdAndUpdate(
+          participantId, 
+          { $inc: { score: totalScore } },
+          { new: true }
+        );
+      } catch (err) {
+        console.error("Error updating user score:", err);
+        // Continue even if score update fails
+      }
+    }
+    
     // Return result with correct answer for feedback
     return NextResponse.json({
       success: true,

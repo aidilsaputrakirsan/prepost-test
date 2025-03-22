@@ -28,8 +28,7 @@ export default function QuizQuestion() {
   const [selectedOption, setSelectedOption] = useState(null);
   const [animation, setAnimation] = useState({});
   const [error, setError] = useState('');
-  const [isRecovering, setIsRecovering] = useState(false);
-  const [localAuthChecked, setLocalAuthChecked] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const questionRef = useRef(null);
 
   // Set error if context has one
@@ -39,65 +38,101 @@ export default function QuizQuestion() {
     }
   }, [quizError]);
 
-  // Enhanced auth check that first tries context, then localStorage as fallback
+  // Enhanced auth check with direct question fetching
   useEffect(() => {
     if (!user) {
       console.log("No user found in context, checking localStorage");
-      setIsRecovering(true);
       
-      // Check localStorage as fallback
       try {
         const storedUser = localStorage.getItem('quiz_user');
         const storedStatus = localStorage.getItem('quiz_status');
         const storedQuizId = localStorage.getItem('quiz_id');
         
-        console.log("localStorage check:", {
-          user: storedUser ? "Found" : "Not found",
-          status: storedStatus,
-          quizId: storedQuizId
-        });
-        
-        // If we have valid data in localStorage matching current quiz, use it
-        if (storedUser && storedStatus === 'active' && storedQuizId === quizId) {
-          console.log("Found valid user data in localStorage for active quiz");
+        if (storedUser && storedQuizId === quizId) {
+          console.log("Found stored user data, applying auth headers");
+          const userData = JSON.parse(storedUser);
           
-          // Force a reload to re-establish the auth context
-          if (!localAuthChecked) {
-            setLocalAuthChecked(true);
+          // Apply auth headers for future requests
+          const originalFetch = window.fetch;
+          window.fetch = function(url, options = {}) {
+            // Create a new options object if none exists
+            options = options || {};
             
-            // Add a slight delay before reload to avoid reload loops
-            setTimeout(() => {
-              window.location.reload();
-            }, 300);
-            return;
+            // Safely handle headers
+            let headers = {};
+            
+            if (options.headers) {
+              if (options.headers instanceof Headers) {
+                // Convert Headers object to plain object
+                for (const [key, value] of options.headers.entries()) {
+                  headers[key] = value;
+                }
+              } else {
+                headers = { ...options.headers };
+              }
+            }
+            
+            // Add our authentication headers
+            headers['x-participant-id'] = userData.id;
+            headers['x-quiz-id'] = quizId;
+            headers['x-has-local-storage'] = 'true';
+            
+            // Update the options object
+            options.headers = headers;
+            
+            // Call the original fetch with modified options
+            return originalFetch(url, options);
+          };
+          
+          // If quiz is active, try to fetch current question directly
+          if (storedStatus === 'active') {
+            fetch(`/api/quiz/${quizId}/current-question`)
+              .then(res => res.json())
+              .then(data => {
+                if (data.success && data.data) {
+                  // We have a question, quiz is indeed active
+                  console.log("Successfully fetched current question");
+                  setIsReady(true);
+                } else {
+                  // No question available, redirect to waiting room
+                  console.log("No active question found");
+                  router.push(`/waiting-room/${quizId}`);
+                }
+              })
+              .catch(err => {
+                console.error("Error fetching question:", err);
+                router.push(`/waiting-room/${quizId}`);
+              });
+          } else {
+            // Not active, redirect based on stored status
+            if (storedStatus === 'waiting') {
+              router.push(`/waiting-room/${quizId}`);
+            } else if (storedStatus === 'finished') {
+              router.push(`/results/${quizId}`);
+            } else {
+              router.push(`/join/${quizId}`);
+            }
           }
         } else {
-          console.log("No valid auth data for this quiz, redirecting to join");
+          // No valid auth data for this quiz
           router.push(`/join/${quizId}`);
-          return;
         }
       } catch (e) {
         console.error("localStorage check error:", e);
-        // If localStorage access fails, redirect to join
         router.push(`/join/${quizId}`);
-        return;
       }
     } else {
-      setIsRecovering(false);
-      setLocalAuthChecked(true);
+      // We have user in context, mark as ready
+      setIsReady(true);
+      
+      // Still redirect based on quiz status
+      if (quizStatus === 'waiting') {
+        router.push(`/waiting-room/${quizId}`);
+      } else if (quizStatus === 'finished') {
+        router.push(`/results/${quizId}`);
+      }
     }
-
-    // Modified quiz status handling
-    if (quizStatus === 'waiting' && user) {
-      console.log("Quiz is in waiting state, redirecting to waiting room");
-      router.push(`/waiting-room/${quizId}`);
-    } else if (quizStatus === 'finished' && user) {
-      console.log("Quiz is finished, redirecting to results");
-      router.push(`/results/${quizId}`);
-    } else {
-      console.log("Current quiz status:", quizStatus);
-    }
-  }, [user, quizStatus, router, quizId, localAuthChecked]);
+  }, [user, quizId, router, quizStatus]);
 
   // Reset startTime when a new question is received
   useEffect(() => {
@@ -177,12 +212,12 @@ export default function QuizQuestion() {
       : `${styles} border-gray-200 bg-white hover:bg-gray-50`;
   };
 
-  if (isRecovering || (!currentQuestion && quizStatus === 'active')) {
-    return <Loading message="Loading question..." />;
+  if (!isReady) {
+    return <Loading message="Connecting to quiz..." />;
   }
 
   if (!currentQuestion) {
-    return <Loading message="Waiting for quiz to start..." />;
+    return <Loading message="Waiting for question..." />;
   }
 
   return (

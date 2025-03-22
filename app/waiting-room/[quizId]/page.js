@@ -82,9 +82,13 @@ export default function WaitingRoom() {
               console.log("Quiz is active according to localStorage, redirecting to quiz page");
               router.push(`/quiz/${quizId}`);
               return;
+            } else if (storedStatus === 'finished') {
+              console.log("Quiz is finished according to localStorage, redirecting to results page");
+              router.push(`/results/${quizId}`);
+              return;
             }
             
-            // Add a slight delay before reload to avoid reload loops
+            // Reload to ensure context is up-to-date
             setTimeout(() => {
               window.location.reload();
             }, 300);

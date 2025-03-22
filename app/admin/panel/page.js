@@ -1,4 +1,4 @@
-// app/(admin)/panel/page.js
+// app/admin/panel/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,6 +14,7 @@ export default function AdminPanel() {
   const [success, setSuccess] = useState('');
   const [customQuizId, setCustomQuizId] = useState('');
   const [showCustomId, setShowCustomId] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const router = useRouter();
 
   // Load quizzes when component mounts
@@ -85,6 +86,56 @@ export default function AdminPanel() {
       setShowCustomId(false);
     }
   };
+  
+  // Delete a quiz
+  const handleDeleteQuiz = async (quizId) => {
+    // Show confirmation dialog
+    if (!confirm(`Are you sure you want to delete quiz ${quizId}? This will permanently delete all questions, answers, and participant data for this quiz.`)) {
+      return;
+    }
+    
+    try {
+      setDeleteLoading(true);
+      setError('');
+      
+      const response = await fetch(`/api/quiz/${quizId}`, {
+        method: 'DELETE'
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Update quizzes state by removing the deleted quiz
+        setQuizzes(quizzes.filter(quiz => quiz._id !== quizId));
+        setSuccess(`Quiz ${quizId} deleted successfully!`);
+      } else {
+        setError(data.message || 'Failed to delete quiz. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error deleting quiz:', err);
+      setError('Failed to delete quiz. Please try again.');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        setSuccess('');
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+    
+    if (error) {
+      const timer = setTimeout(() => {
+        setError('');
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [success, error]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -218,6 +269,21 @@ export default function AdminPanel() {
                           >
                             Control
                           </Link>
+                          {quiz.status === 'finished' && (
+                            <Link
+                              href={`/admin/leaderboard/${quiz._id}`}
+                              className="px-3 py-1 bg-purple-500 text-white text-sm rounded hover:bg-purple-600 transition duration-200"
+                            >
+                              Results
+                            </Link>
+                          )}
+                          <button
+                            onClick={() => handleDeleteQuiz(quiz._id)}
+                            className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition duration-200"
+                            disabled={deleteLoading}
+                          >
+                            Delete
+                          </button>
                         </div>
                       </td>
                     </tr>

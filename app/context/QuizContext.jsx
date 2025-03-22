@@ -62,17 +62,21 @@ export const QuizProvider = ({ children }) => {
   const fetchQuizData = async (quizId) => {
     try {
       setLoading(true);
+      console.log("Fetching quiz data for", quizId);
       const response = await fetch(`/api/quiz/${quizId}`);
       const data = await response.json();
       
       if (data.success) {
+        console.log("Quiz data fetched:", data.data);
         setCurrentQuiz(data.data);
         setQuizStatus(data.data.status);
         
         // If quiz is active, fetch current question
         if (data.data.status === 'active') {
+          console.log("Quiz is active, fetching current question");
           fetchCurrentQuestion(quizId);
         } else if (data.data.status === 'finished') {
+          console.log("Quiz is finished, fetching leaderboard");
           fetchLeaderboard(quizId);
         }
         
@@ -92,14 +96,18 @@ export const QuizProvider = ({ children }) => {
   // Fetch current question
   const fetchCurrentQuestion = async (quizId) => {
     try {
+      console.log("Fetching current question");
       const response = await fetch(`/api/quiz/${quizId}/current-question`);
       const data = await response.json();
       
       if (data.success) {
+        console.log("Current question fetched:", data.data);
         setCurrentQuestion(data.data);
         setTimeLeft(data.data.timeLimit);
         setAnswer(null);
         setAnswerResult(null);
+      } else {
+        console.warn("Failed to fetch current question:", data.message);
       }
     } catch (error) {
       console.error('Error fetching current question:', error);
@@ -123,11 +131,15 @@ export const QuizProvider = ({ children }) => {
   // Fetch leaderboard
   const fetchLeaderboard = async (quizId) => {
     try {
+      console.log("Fetching leaderboard");
       const response = await fetch(`/api/quiz/${quizId}/leaderboard`);
       const data = await response.json();
       
       if (data.success) {
+        console.log("Leaderboard data:", data.data.entries);
         setLeaderboard(data.data.entries || []);
+      } else {
+        console.warn("Failed to fetch leaderboard:", data.message);
       }
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
@@ -135,7 +147,6 @@ export const QuizProvider = ({ children }) => {
   };
   
   // Submit answer
-  
   const submitAnswer = async (quizId, questionId, selectedOption, responseTime) => {
     try {
       setAnswer(selectedOption);
@@ -183,6 +194,7 @@ export const QuizProvider = ({ children }) => {
       const data = await response.json();
       
       if (data.success) {
+        console.log("Answer submitted successfully:", data.data);
         setAnswerResult(data.data);
       } else {
         setError(data.message || 'Failed to submit answer');
@@ -324,27 +336,42 @@ export const QuizProvider = ({ children }) => {
     setAnswer(null);
     setAnswerResult(null);
     
-    // Force store quiz status in localStorage for persistence
+    // Store quiz status in localStorage for persistence
     if (typeof window !== 'undefined') {
       try {
-        // Store quiz status to prevent it from being lost
         localStorage.setItem('quiz_status', 'active');
         localStorage.setItem('quiz_id', quizId);
         
-        // Ensure user data is still in localStorage
-        const userData = localStorage.getItem('quiz_user');
-        console.log("User data in localStorage:", userData ? "Present" : "Missing");
+        // Instead of immediate redirect, fetch current question first
+        console.log("Waiting for question before redirecting...");
         
-        // FIXED: Use Next.js router for cleaner navigation, 
-        // and reload the page to ensure headers are properly reset
-        router.push(`/quiz/${quizId}`);
-        
-        // Fallback if router doesn't work
-        setTimeout(() => {
-          if (window.location.pathname !== `/quiz/${quizId}`) {
-            window.location.href = `/quiz/${quizId}`;
-          }
-        }, 500);
+        // Fetch current question to ensure it's ready
+        fetch(`/api/quiz/${quizId}/current-question`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && data.data) {
+              console.log("Question is ready, redirecting to quiz page");
+              // Update the question in state
+              setCurrentQuestion(data.data);
+              setTimeLeft(data.data.timeLimit);
+              
+              // Navigate to quiz page
+              router.push(`/quiz/${quizId}`);
+            } else {
+              // No question available yet, wait a bit longer
+              console.log("Question not ready yet, waiting...");
+              setTimeout(() => {
+                router.push(`/quiz/${quizId}`);
+              }, 1500);
+            }
+          })
+          .catch(err => {
+            console.error("Error checking question:", err);
+            // Still redirect even if there's an error
+            setTimeout(() => {
+              router.push(`/quiz/${quizId}`);
+            }, 1000);
+          });
       } catch (err) {
         console.error("LocalStorage error:", err);
         // Fallback direct navigation
@@ -356,6 +383,17 @@ export const QuizProvider = ({ children }) => {
   useEvent(eventNames.quizStopped, (data) => {
     console.log("Quiz stopped event received:", data);
     setQuizStatus('finished');
+    
+    // Update localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('quiz_status', 'finished');
+      } catch (e) {
+        console.error("Error updating localStorage:", e);
+      }
+    }
+    
+    // Fetch leaderboard data
     fetchLeaderboard(quizId);
     
     // Force redirect to results page
@@ -369,10 +407,29 @@ export const QuizProvider = ({ children }) => {
     setCurrentQuestion(null);
     setAnswer(null);
     setAnswerResult(null);
+    
+    // Update localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('quiz_status', 'waiting');
+      } catch (e) {
+        console.error("Error updating localStorage:", e);
+      }
+    }
   });
   
   useEvent(eventNames.quizEnded, () => {
     setQuizStatus('finished');
+    
+    // Update localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('quiz_status', 'finished');
+      } catch (e) {
+        console.error("Error updating localStorage:", e);
+      }
+    }
+    
     fetchLeaderboard(quizId);
   });
   

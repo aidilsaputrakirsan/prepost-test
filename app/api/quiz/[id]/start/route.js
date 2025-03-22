@@ -65,58 +65,55 @@ export async function POST(request, { params }) {
       totalQuestions: quiz.questions.length
     };
     
-    console.log("Sending quiz started event to channel:", channelNames.quiz(quizId));
+    console.log("Sending quiz data:", quizId);
     
-    // Trigger Pusher event to notify participants
-    // First log the event we're about to send
-    console.log("Triggering quiz started event:", {
-      channel: channelNames.quiz(quizId),
-      event: eventNames.quizStarted,
-      data: { status: 'active' }
-    });
+    // IMPORTANT: Changed order to first send question, then notify about quiz starting
+    // This ensures the question is available before clients navigate to quiz page
     
-    // Send the actual event
+    // First send the question
+    console.log("Sending first question:", safeQuestion);
     await triggerEvent(
       channelNames.quiz(quizId),
-      eventNames.quizStarted,
-      { status: 'active' }
+      eventNames.questionSent,
+      safeQuestion
     );
     
-    // Send first question after a short delay
+    // Then send quiz started event (after a short delay)
     setTimeout(async () => {
-      console.log("Sending question:", safeQuestion);
-      
+      console.log("Triggering quiz started event");
       await triggerEvent(
         channelNames.quiz(quizId),
-        eventNames.questionSent,
-        safeQuestion
+        eventNames.quizStarted,
+        { status: 'active' }
       );
       
-      // Start timer
-      let timeLeft = question.timeLimit;
-      const timerInterval = setInterval(async () => {
-        timeLeft -= 1;
-        
-        // Send timer update
-        await triggerEvent(
-          channelNames.quiz(quizId),
-          eventNames.timerUpdate,
-          { timeLeft }
-        );
-        
-        // When timer ends
-        if (timeLeft <= 0) {
-          clearInterval(timerInterval);
+      // Start timer after question and quiz started events are sent
+      setTimeout(async () => {
+        let timeLeft = question.timeLimit;
+        const timerInterval = setInterval(async () => {
+          timeLeft -= 1;
           
-          // Let admin know time is up for this question
+          // Send timer update
           await triggerEvent(
-            channelNames.admin(quizId),
-            'question-time-up',
-            { questionIndex: 0 }
+            channelNames.quiz(quizId),
+            eventNames.timerUpdate,
+            { timeLeft }
           );
-        }
+          
+          // When timer ends
+          if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            
+            // Let admin know time is up for this question
+            await triggerEvent(
+              channelNames.admin(quizId),
+              'question-time-up',
+              { questionIndex: 0 }
+            );
+          }
+        }, 1000);
       }, 1000);
-    }, 2000);
+    }, 500);
     
     return NextResponse.json({
       success: true,

@@ -41,7 +41,15 @@ export default function usePusher(quizId) {
       const channelName = channelNames.quiz(quizId);
       console.log("Subscribing to channel:", channelName);
       
+      // First, unsubscribe if we're already subscribed
+      try {
+        pusherClient.unsubscribe(channelName);
+      } catch (e) {
+        // Ignore errors during unsubscribe
+      }
+      
       const quizChannel = pusherClient.subscribe(channelName);
+      
       quizChannel.bind('pusher:subscription_succeeded', () => {
         console.log(`Successfully subscribed to ${channelName}`);
         setConnected(true);
@@ -57,6 +65,13 @@ export default function usePusher(quizId) {
       if (isAdmin) {
         const adminChannelName = channelNames.admin(quizId);
         console.log("Admin subscribing to channel:", adminChannelName);
+        
+        // First, unsubscribe if we're already subscribed
+        try {
+          pusherClient.unsubscribe(adminChannelName);
+        } catch (e) {
+          // Ignore errors during unsubscribe
+        }
         
         const adminChan = pusherClient.subscribe(adminChannelName);
         setAdminChannel(adminChan);
@@ -118,6 +133,14 @@ export default function usePusher(quizId) {
         callback(data);
       };
       
+      // First try to unbind any existing callbacks to prevent duplicates
+      try {
+        channel.unbind(eventName, eventCallback);
+      } catch (e) {
+        // Ignore any errors when unbinding
+      }
+      
+      // Now bind the new callback
       channel.bind(eventName, eventCallback);
       
       return () => {
@@ -132,6 +155,14 @@ export default function usePusher(quizId) {
     useEffect(() => {
       if (!adminChannel) return;
       
+      // First try to unbind any existing callbacks to prevent duplicates
+      try {
+        adminChannel.unbind(eventName);
+      } catch (e) {
+        // Ignore any errors when unbinding
+      }
+      
+      // Now bind the new callback
       adminChannel.bind(eventName, callback);
       
       return () => {
