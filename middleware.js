@@ -37,6 +37,12 @@ export async function middleware(request) {
     console.log("Allowing public access to user creation");
     return NextResponse.next();
   }
+
+  // In middleware.js, ensure the '/api/quiz/answer' path is allowed
+  if (pathname === "/api/quiz/answer" && request.method === "POST") {
+    console.log("Allowing answer submission");
+    return NextResponse.next();
+  }
   
   // Check admin routes
   const isAdminRoute = adminPaths.some(path => pathname.includes(path)) || 
@@ -75,22 +81,30 @@ export async function middleware(request) {
       pathname
     });
     
+    // Get the quiz ID from the path for redirect purposes
+    let pathQuizId = '';
+    
+    if (pathname.split('/').length >= 3) {
+      pathQuizId = pathname.split('/')[2];
+    }
+    
+    // IMPROVED: More flexible checks for authentication
+    // We now check headers first, but if headers aren't present, 
+    // we'll let the page component handle authentication checks from localStorage
     if (!token && !hasLocalStorage) {
-      console.log("No authentication found for protected route");
+      console.log("No authentication found in headers");
       
-      // Special case for waiting room - redirect to join page with quiz ID
-      if (pathname.startsWith('/waiting-room/')) {
-        const pathQuizId = pathname.split('/')[2];
-        return NextResponse.redirect(new URL(`/join/${pathQuizId}`, request.url));
+      // Only redirect for waiting room and quiz pages that need auth before content load
+      // Allow results and leaderboard pages to check auth client-side first
+      if (pathname.startsWith('/waiting-room/') || pathname.startsWith('/quiz/')) {
+        // If we have a quiz ID in the URL, use it for redirecting
+        if (pathQuizId) {
+          console.log(`Redirecting to join page with quiz ID: ${pathQuizId}`);
+          return NextResponse.redirect(new URL(`/join/${pathQuizId}`, request.url));
+        } else {
+          return NextResponse.redirect(new URL("/", request.url));
+        }
       }
-      
-      // Special case for quiz page - redirect to join page with quiz ID
-      if (pathname.startsWith('/quiz/')) {
-        const pathQuizId = pathname.split('/')[2];
-        return NextResponse.redirect(new URL(`/join/${pathQuizId}`, request.url));
-      }
-      
-      return NextResponse.redirect(new URL("/", request.url));
     }
   }
   

@@ -1,14 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/app/context/AuthContext';
 import { useQuiz } from '@/app/context/QuizContext';
 import Loading from '@/app/components/common/Loading';
 
-export default function WaitingRoom({ params }) {
-  const { quizId } = params;
+export default function WaitingRoom() {
+  // Use useParams hook to access route parameters client-side
+  const params = useParams();
+  const quizId = params.quizId;
+  
   const { user, logout } = useAuth();
   const { 
     joinWaitingRoom, 
@@ -23,6 +26,7 @@ export default function WaitingRoom({ params }) {
   const [joined, setJoined] = useState(false);
   const [error, setError] = useState('');
   const [currentQuote, setCurrentQuote] = useState('');
+  const [localAuthChecked, setLocalAuthChecked] = useState(false);
   
   const randomQuotes = [
     "Take a deep breath and prepare for this test!",
@@ -48,28 +52,101 @@ export default function WaitingRoom({ params }) {
     }
   }, [quizError]);
 
-  // Redirect if not logged in
+  // Enhanced auth check with localStorage fallback
   useEffect(() => {
     if (!user) {
-      router.push(`/join/${quizId}`);
-      return;
+      console.log("No user found in context, checking localStorage");
+      
+      // Check localStorage as fallback
+      try {
+        const storedUser = localStorage.getItem('quiz_user');
+        const storedStatus = localStorage.getItem('quiz_status');
+        const storedQuizId = localStorage.getItem('quiz_id');
+        
+        console.log("localStorage check:", {
+          user: storedUser ? "Found" : "Not found",
+          status: storedStatus,
+          quizId: storedQuizId
+        });
+        
+        // If we have valid data in localStorage matching current quiz, use it
+        if (storedUser && storedQuizId === quizId) {
+          console.log("Found valid user data in localStorage");
+          
+          // Make sure we only check once to avoid loops
+          if (!localAuthChecked) {
+            setLocalAuthChecked(true);
+            
+            // If quiz is active according to localStorage, redirect to quiz page
+            if (storedStatus === 'active') {
+              console.log("Quiz is active according to localStorage, redirecting to quiz page");
+              router.push(`/quiz/${quizId}`);
+              return;
+            }
+            
+            // Add a slight delay before reload to avoid reload loops
+            setTimeout(() => {
+              window.location.reload();
+            }, 300);
+            return;
+          }
+        } else {
+          console.log("No valid auth data for this quiz, redirecting to join");
+          router.push(`/join/${quizId}`);
+          return;
+        }
+      } catch (e) {
+        console.error("localStorage check error:", e);
+        // If localStorage access fails, redirect to join
+        router.push(`/join/${quizId}`);
+        return;
+      }
+    } else {
+      setLocalAuthChecked(true);
     }
-  }, [user, router, quizId]);
+  }, [user, router, quizId, localAuthChecked]);
 
-  // Join waiting room
+  // Join waiting room when authenticated
   useEffect(() => {
-    if (user && connected && !joined) {
+    if (user && connected && !joined && localAuthChecked) {
+      console.log("Joining waiting room with user:", user.name);
       joinWaitingRoom(quizId);
       setJoined(true);
-      localStorage.setItem('quiz_user', JSON.stringify(user));
+      
+      // Ensure the user data is in localStorage
+      try {
+        localStorage.setItem('quiz_user', JSON.stringify(user));
+        localStorage.setItem('quiz_status', 'waiting');
+        localStorage.setItem('quiz_id', quizId);
+      } catch (e) {
+        console.error("Error storing user data:", e);
+      }
     }
-  }, [user, quizId, joinWaitingRoom, connected, joined]);
+  }, [user, quizId, joinWaitingRoom, connected, joined, localAuthChecked]);
 
   // Redirect when quiz starts
   useEffect(() => {
     if (quizStatus === 'active') {
+      console.log("Quiz is now active, redirecting to quiz page");
+      
+      // Store quiz status before redirect
+      try {
+        localStorage.setItem('quiz_status', 'active');
+      } catch (e) {
+        console.error("Error storing quiz status:", e);
+      }
+      
       router.push(`/quiz/${quizId}`);
     } else if (quizStatus === 'finished') {
+      console.log("Quiz is finished, redirecting to results");
+      
+      // Store quiz status before redirect
+      try {
+        localStorage.setItem('quiz_status', 'finished');
+      } catch (e) {
+        console.error("Error storing quiz status:", e);
+      }
+      
       router.push(`/results/${quizId}`);
     }
   }, [quizStatus, router, quizId]);
@@ -94,7 +171,7 @@ export default function WaitingRoom({ params }) {
     }
   };
 
-  if (loading) {
+  if (loading || !localAuthChecked) {
     return <Loading message="Loading waiting room..." />;
   }
 

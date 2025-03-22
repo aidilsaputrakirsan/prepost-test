@@ -1,14 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/app/context/AuthContext';
 import { useQuiz } from '@/app/context/QuizContext';
 import Loading from '@/app/components/common/Loading';
 
-export default function QuizResults({ params }) {
-  const { quizId } = params;
+export default function QuizResults() {
+  // Use useParams hook to access route parameters client-side
+  const params = useParams();
+  const quizId = params.quizId;
+  
   const { user } = useAuth();
   const { quizStatus, leaderboard, loading, error: quizError } = useQuiz();
   

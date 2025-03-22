@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/app/context/AuthContext';
 
-export default function ParticipantsList({ params }) {
-  const { quizId } = params;
+export default function ParticipantsList() {
+  // Use useParams hook to access route parameters client-side
+  const params = useParams();
+  const quizId = params.quizId;
+  
   const { user } = useAuth();
   const router = useRouter();
   

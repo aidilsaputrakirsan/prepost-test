@@ -9,11 +9,12 @@ import { authOptions } from "../../../auth/[...nextauth]/route";
 // Get participants for a quiz
 export async function GET(request, { params }) {
   try {
-    // Access parameter directly without destructuring
-    const quizId = String(params?.quizId || '');
+    // Properly destructure and handle the quizId parameter
+    const { quizId } = params;
+    const quizIdString = String(quizId || '');
     const session = await getServerSession(authOptions);
     
-    console.log(`Getting participants for quiz: ${quizId}, user: ${session?.user?.id}`);
+    console.log(`Getting participants for quiz: ${quizIdString}, user: ${session?.user?.id}`);
     
     if (!session) {
       console.log("No session found, returning 401");
@@ -25,10 +26,10 @@ export async function GET(request, { params }) {
     
     await connectToDatabase();
     
-    const quiz = await QuizState.findById(quizId);
+    const quiz = await QuizState.findById(quizIdString);
     
     if (!quiz) {
-      console.log(`Quiz not found: ${quizId}`);
+      console.log(`Quiz not found: ${quizIdString}`);
       return NextResponse.json(
         { success: false, message: "Quiz not found", data: [] },
         { status: 404 }

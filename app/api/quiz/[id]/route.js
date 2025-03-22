@@ -7,8 +7,9 @@ import Question from "@/app/models/Question";
 // Get quiz by ID
 export async function GET(request, { params }) {
   try {
-    // Access parameter directly without destructuring
-    const quizId = String(params?.id || '');
+    // Properly destructure and handle the ID parameter
+    const { id } = params;
+    const quizId = String(id || '');
     
     await connectToDatabase();
     

@@ -8,7 +8,9 @@ import User from "@/app/models/User";
 
 export async function GET(request, { params }) {
   try {
-    const quizId = params.id;
+    // Access id directly without destructuring
+    const id = params.id;
+    const quizId = String(id || '');
     
     await connectToDatabase();
     

@@ -1,14 +1,17 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { useQuiz } from '@/app/context/QuizContext';
 import Timer from '@/app/components/common/Timer';
 import Loading from '@/app/components/common/Loading';
 
-export default function QuizQuestion({ params }) {
-  const { quizId } = params;
+export default function QuizQuestion() {
+  // Use useParams hook to access route parameters client-side
+  const params = useParams();
+  const quizId = params.quizId;
+  
   const { user } = useAuth();
   const {
     currentQuestion,
@@ -25,6 +28,8 @@ export default function QuizQuestion({ params }) {
   const [selectedOption, setSelectedOption] = useState(null);
   const [animation, setAnimation] = useState({});
   const [error, setError] = useState('');
+  const [isRecovering, setIsRecovering] = useState(false);
+  const [localAuthChecked, setLocalAuthChecked] = useState(false);
   const questionRef = useRef(null);
 
   // Set error if context has one
@@ -34,51 +39,65 @@ export default function QuizQuestion({ params }) {
     }
   }, [quizError]);
 
-  // Redirect if not logged in
-useEffect(() => {
-  if (!user) {
-    console.log("No user found in context, checking localStorage");
-    
-    // Check localStorage as fallback
-    try {
-      const storedUser = localStorage.getItem('quiz_user');
-      const storedStatus = localStorage.getItem('quiz_status');
-      const storedQuizId = localStorage.getItem('quiz_id');
+  // Enhanced auth check that first tries context, then localStorage as fallback
+  useEffect(() => {
+    if (!user) {
+      console.log("No user found in context, checking localStorage");
+      setIsRecovering(true);
       
-      console.log("localStorage check:", {
-        user: storedUser ? "Found" : "Not found",
-        status: storedStatus,
-        quizId: storedQuizId
-      });
-      
-      // If we have data in localStorage but not in context, reload the page
-      // This helps recover from context resets
-      if (storedUser && storedStatus === 'active' && storedQuizId === quizId) {
-        console.log("Found user data in localStorage, reloading context");
-        window.location.reload();
+      // Check localStorage as fallback
+      try {
+        const storedUser = localStorage.getItem('quiz_user');
+        const storedStatus = localStorage.getItem('quiz_status');
+        const storedQuizId = localStorage.getItem('quiz_id');
+        
+        console.log("localStorage check:", {
+          user: storedUser ? "Found" : "Not found",
+          status: storedStatus,
+          quizId: storedQuizId
+        });
+        
+        // If we have valid data in localStorage matching current quiz, use it
+        if (storedUser && storedStatus === 'active' && storedQuizId === quizId) {
+          console.log("Found valid user data in localStorage for active quiz");
+          
+          // Force a reload to re-establish the auth context
+          if (!localAuthChecked) {
+            setLocalAuthChecked(true);
+            
+            // Add a slight delay before reload to avoid reload loops
+            setTimeout(() => {
+              window.location.reload();
+            }, 300);
+            return;
+          }
+        } else {
+          console.log("No valid auth data for this quiz, redirecting to join");
+          router.push(`/join/${quizId}`);
+          return;
+        }
+      } catch (e) {
+        console.error("localStorage check error:", e);
+        // If localStorage access fails, redirect to join
+        router.push(`/join/${quizId}`);
         return;
       }
-    } catch (e) {
-      console.error("localStorage check error:", e);
+    } else {
+      setIsRecovering(false);
+      setLocalAuthChecked(true);
     }
-    
-    // If no user in context or localStorage, redirect to join
-    console.log("No user data found, redirecting to join page");
-    router.push(`/join/${quizId}`);
-    return;
-  }
 
-  // Modified quiz status handling
-  if (quizStatus === 'waiting' && user) {
-    console.log("Quiz is in waiting state, redirecting to waiting room");
-    router.push(`/waiting-room/${quizId}`);
-  } else if (quizStatus === 'finished' && user) {
-    console.log("Quiz is finished, redirecting to results");
-    router.push(`/results/${quizId}`);
-  } else {
-    console.log("Current quiz status:", quizStatus);
-  }
-}, [user, quizStatus, router, quizId]);
+    // Modified quiz status handling
+    if (quizStatus === 'waiting' && user) {
+      console.log("Quiz is in waiting state, redirecting to waiting room");
+      router.push(`/waiting-room/${quizId}`);
+    } else if (quizStatus === 'finished' && user) {
+      console.log("Quiz is finished, redirecting to results");
+      router.push(`/results/${quizId}`);
+    } else {
+      console.log("Current quiz status:", quizStatus);
+    }
+  }, [user, quizStatus, router, quizId, localAuthChecked]);
 
   // Reset startTime when a new question is received
   useEffect(() => {
@@ -158,8 +177,12 @@ useEffect(() => {
       : `${styles} border-gray-200 bg-white hover:bg-gray-50`;
   };
 
-  if (!currentQuestion) {
+  if (isRecovering || (!currentQuestion && quizStatus === 'active')) {
     return <Loading message="Loading question..." />;
+  }
+
+  if (!currentQuestion) {
+    return <Loading message="Waiting for quiz to start..." />;
   }
 
   return (

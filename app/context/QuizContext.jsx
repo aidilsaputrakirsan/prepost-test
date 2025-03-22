@@ -5,6 +5,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { useAuth } from './AuthContext';
 import usePusher from '@/app/hooks/usePusher';
 import { eventNames } from '@/app/lib/pusher';
+import { useRouter } from 'next/navigation';
 
 const QuizContext = createContext({});
 
@@ -12,6 +13,7 @@ export const useQuiz = () => useContext(QuizContext);
 
 export const QuizProvider = ({ children }) => {
   const { user } = useAuth();
+  const router = useRouter();
   
   const [currentQuiz, setCurrentQuiz] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(null);
@@ -133,14 +135,35 @@ export const QuizProvider = ({ children }) => {
   };
   
   // Submit answer
+  
   const submitAnswer = async (quizId, questionId, selectedOption, responseTime) => {
     try {
       setAnswer(selectedOption);
       
+      // Add debugging to see if we have local storage data
+      let userData;
+      try {
+        const storedUser = localStorage.getItem('quiz_user');
+        if (storedUser) {
+          userData = JSON.parse(storedUser);
+          console.log("Found user data in localStorage:", userData.id);
+        } else {
+          console.warn("No user data in localStorage");
+        }
+      } catch (e) {
+        console.error("Error checking localStorage:", e);
+      }
+      
+      console.log("Submitting answer: Quiz", quizId, "Question", questionId, "Option", selectedOption);
+      
       const response = await fetch('/api/quiz/answer', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          // Add custom headers just in case they're not being added by fetch override
+          'x-participant-id': userData?.id || '',
+          'x-quiz-id': quizId,
+          'x-has-local-storage': 'true'
         },
         body: JSON.stringify({
           quizId,
@@ -149,6 +172,13 @@ export const QuizProvider = ({ children }) => {
           responseTime
         })
       });
+      
+      if (!response.ok) {
+        console.error("Answer submission failed:", response.status, response.statusText);
+        const text = await response.text();
+        console.error("Response body:", text);
+        throw new Error(`Server error: ${response.status}`);
+      }
       
       const data = await response.json();
       
@@ -301,18 +331,20 @@ export const QuizProvider = ({ children }) => {
         localStorage.setItem('quiz_status', 'active');
         localStorage.setItem('quiz_id', quizId);
         
-        // Log for debugging
-        console.log("Quiz data stored in localStorage:", quizId);
-        
         // Ensure user data is still in localStorage
         const userData = localStorage.getItem('quiz_user');
         console.log("User data in localStorage:", userData ? "Present" : "Missing");
         
-        // Add a slight delay for state updates to propagate
+        // FIXED: Use Next.js router for cleaner navigation, 
+        // and reload the page to ensure headers are properly reset
+        router.push(`/quiz/${quizId}`);
+        
+        // Fallback if router doesn't work
         setTimeout(() => {
-          console.log("Navigating to quiz page:", `/quiz/${quizId}`);
-          window.location.href = `/quiz/${quizId}`;
-        }, 300);
+          if (window.location.pathname !== `/quiz/${quizId}`) {
+            window.location.href = `/quiz/${quizId}`;
+          }
+        }, 500);
       } catch (err) {
         console.error("LocalStorage error:", err);
         // Fallback direct navigation
@@ -321,16 +353,16 @@ export const QuizProvider = ({ children }) => {
     }
   });
 
-useEvent(eventNames.quizStopped, (data) => {
-  console.log("Quiz stopped event received:", data);
-  setQuizStatus('finished');
-  fetchLeaderboard(quizId);
-  
-  // Force redirect to results page
-  if (quizId && typeof window !== 'undefined') {
-    window.location.href = `/results/${quizId}`;
-  }
-});
+  useEvent(eventNames.quizStopped, (data) => {
+    console.log("Quiz stopped event received:", data);
+    setQuizStatus('finished');
+    fetchLeaderboard(quizId);
+    
+    // Force redirect to results page
+    if (quizId) {
+      router.push(`/results/${quizId}`);
+    }
+  });
   
   useEvent(eventNames.quizReset, () => {
     setQuizStatus('waiting');

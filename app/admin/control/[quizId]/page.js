@@ -2,14 +2,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/app/context/AuthContext';
 import { useQuiz } from '@/app/context/QuizContext';
 import Loading from '@/app/components/common/Loading';
 
-export default function QuizControl({ params }) {
-  const { quizId } = params;
+export default function QuizControl() {
+  // Use useParams hook to access route parameters client-side
+  const params = useParams();
+  const quizId = params.quizId;
+  
   const { user } = useAuth();
   const router = useRouter();
   
@@ -190,6 +193,28 @@ export default function QuizControl({ params }) {
       setError('Failed to stop quiz. Please try again.');
     } finally {
       setActionLoading(false);
+    }
+  };
+  
+  // Remove participant
+  const handleRemoveParticipant = async (userId) => {
+    try {
+      const response = await fetch(`/api/quiz/${quizId}/participants/${userId}`, {
+        method: 'DELETE'
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Update participants list
+        setParticipants(participants.filter(p => p._id !== userId));
+        setSuccess('Participant removed successfully!');
+      } else {
+        setError(data.message || 'Failed to remove participant');
+      }
+    } catch (err) {
+      console.error('Error removing participant:', err);
+      setError('Failed to remove participant. Please try again.');
     }
   };
   

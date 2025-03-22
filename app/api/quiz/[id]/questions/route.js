@@ -9,8 +9,9 @@ import { authOptions } from "../../../auth/[...nextauth]/route";
 // Get questions for a quiz
 export async function GET(request, { params }) {
   try {
-    // Access parameter directly without destructuring
-    const quizId = String(params?.id || '');
+    // Properly destructure and handle the ID parameter
+    const { id } = params;
+    const quizId = String(id || '');
     const session = await getServerSession(authOptions);
     
     // Check if admin (to show all question details)
@@ -61,8 +62,9 @@ export async function GET(request, { params }) {
 // Add questions to a quiz
 export async function POST(request, { params }) {
   try {
-    // Access parameter directly without destructuring
-    const quizId = String(params?.id || '');
+    // Properly destructure and handle the ID parameter
+    const { id } = params;
+    const quizId = String(id || '');
     const session = await getServerSession(authOptions);
     
     if (!session || !session.user.isAdmin) {
