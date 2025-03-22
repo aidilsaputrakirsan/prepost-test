@@ -1,6 +1,13 @@
 // app/lib/db.js
 import mongoose from 'mongoose';
 
+// Import all models here to ensure they're registered properly
+import '../models/User';
+import '../models/QuizState';
+import '../models/Question';
+import '../models/Answer';
+import '../models/Leaderboard';
+
 // Global variable to maintain connection across serverless function invocations
 let cached = global.mongoose;
 

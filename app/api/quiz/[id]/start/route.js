@@ -5,11 +5,12 @@ import QuizState from "@/app/models/QuizState";
 import Question from "@/app/models/Question";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../auth/[...nextauth]/route";
-import { pusher, channelNames, eventNames } from "@/app/lib/pusher";
+import { pusher, channelNames, eventNames, triggerEvent } from "@/app/lib/pusher";
 
 export async function POST(request, { params }) {
   try {
-    const quizId = params.id;
+    // Fix: Properly destructure params
+    const { id: quizId } = params;
     const session = await getServerSession(authOptions);
     
     if (!session || !session.user.isAdmin) {
@@ -64,8 +65,18 @@ export async function POST(request, { params }) {
       totalQuestions: quiz.questions.length
     };
     
+    console.log("Sending quiz started event to channel:", channelNames.quiz(quizId));
+    
     // Trigger Pusher event to notify participants
-    await pusher.trigger(
+    // First log the event we're about to send
+    console.log("Triggering quiz started event:", {
+      channel: channelNames.quiz(quizId),
+      event: eventNames.quizStarted,
+      data: { status: 'active' }
+    });
+    
+    // Send the actual event
+    await triggerEvent(
       channelNames.quiz(quizId),
       eventNames.quizStarted,
       { status: 'active' }
@@ -73,7 +84,9 @@ export async function POST(request, { params }) {
     
     // Send first question after a short delay
     setTimeout(async () => {
-      await pusher.trigger(
+      console.log("Sending question:", safeQuestion);
+      
+      await triggerEvent(
         channelNames.quiz(quizId),
         eventNames.questionSent,
         safeQuestion
@@ -85,7 +98,7 @@ export async function POST(request, { params }) {
         timeLeft -= 1;
         
         // Send timer update
-        await pusher.trigger(
+        await triggerEvent(
           channelNames.quiz(quizId),
           eventNames.timerUpdate,
           { timeLeft }
@@ -96,7 +109,7 @@ export async function POST(request, { params }) {
           clearInterval(timerInterval);
           
           // Let admin know time is up for this question
-          await pusher.trigger(
+          await triggerEvent(
             channelNames.admin(quizId),
             'question-time-up',
             { questionIndex: 0 }

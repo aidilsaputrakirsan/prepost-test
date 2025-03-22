@@ -9,7 +9,8 @@ import { authOptions } from "../../../auth/[...nextauth]/route";
 // Get questions for a quiz
 export async function GET(request, { params }) {
   try {
-    const quizId = params.id;
+    // Fix: Properly get the ID from params
+    const { id: quizId } = params;
     const session = await getServerSession(authOptions);
     
     // Check if admin (to show all question details)
@@ -60,7 +61,8 @@ export async function GET(request, { params }) {
 // Add questions to a quiz
 export async function POST(request, { params }) {
   try {
-    const quizId = params.id;
+    // Fix: Properly get the ID from params
+    const { id: quizId } = params;
     const session = await getServerSession(authOptions);
     
     if (!session || !session.user.isAdmin) {

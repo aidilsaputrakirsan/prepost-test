@@ -286,16 +286,28 @@ export const QuizProvider = ({ children }) => {
   };
   
   // Listen for Pusher events
-  useEvent(eventNames.quizStarted, () => {
-    setQuizStatus('active');
-    setAnswer(null);
-    setAnswerResult(null);
-  });
+useEvent(eventNames.quizStarted, (data) => {
+  console.log("Quiz started event received:", data);
+  setQuizStatus('active');
+  setAnswer(null);
+  setAnswerResult(null);
   
-  useEvent(eventNames.quizStopped, () => {
-    setQuizStatus('finished');
-    fetchLeaderboard(quizId);
-  });
+  // Force redirect to quiz page
+  if (quizId && typeof window !== 'undefined') {
+    window.location.href = `/quiz/${quizId}`;
+  }
+});
+
+useEvent(eventNames.quizStopped, (data) => {
+  console.log("Quiz stopped event received:", data);
+  setQuizStatus('finished');
+  fetchLeaderboard(quizId);
+  
+  // Force redirect to results page
+  if (quizId && typeof window !== 'undefined') {
+    window.location.href = `/results/${quizId}`;
+  }
+});
   
   useEvent(eventNames.quizReset, () => {
     setQuizStatus('waiting');
@@ -310,6 +322,7 @@ export const QuizProvider = ({ children }) => {
   });
   
   useEvent(eventNames.questionSent, (data) => {
+    console.log("Question received:", data);
     setCurrentQuestion(data);
     setTimeLeft(data.timeLimit);
     setAnswer(null);

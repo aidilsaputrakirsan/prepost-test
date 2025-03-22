@@ -1,5 +1,5 @@
 // app/hooks/usePusher.js
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { pusherClient, channelNames, eventNames } from '@/app/lib/pusher';
 import { useSession } from 'next-auth/react';
 
@@ -11,73 +11,129 @@ export default function usePusher(quizId) {
   
   // Subscribe to channels
   useEffect(() => {
-    if (!quizId || !session?.user) return;
+    if (!quizId) return;
 
-    // Subscribe to quiz channel
-    const quizChannel = pusherClient.subscribe(channelNames.quiz(quizId));
-    setChannel(quizChannel);
+    console.log("Subscribing to Pusher channel for quiz:", quizId);
     
-    // If user is admin, subscribe to admin channel
-    if (session.user.isAdmin) {
-      const adminChan = pusherClient.subscribe(channelNames.admin(quizId));
-      setAdminChannel(adminChan);
+    // Get user info - either from session or localStorage
+    let isAdmin = false;
+    if (session?.user?.isAdmin) {
+      isAdmin = true;
+    } else {
+      try {
+        const storedUser = typeof localStorage !== 'undefined' 
+          ? localStorage.getItem('quiz_user') 
+          : null;
+        
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          if (userData.isAdmin) {
+            isAdmin = true;
+          }
+        }
+      } catch (e) {
+        console.error("Error checking stored user:", e);
+      }
     }
     
-    setConnected(true);
+    // Subscribe to quiz channel
+    try {
+      const channelName = channelNames.quiz(quizId);
+      console.log("Subscribing to channel:", channelName);
+      
+      const quizChannel = pusherClient.subscribe(channelName);
+      quizChannel.bind('pusher:subscription_succeeded', () => {
+        console.log(`Successfully subscribed to ${channelName}`);
+        setConnected(true);
+      });
+      
+      quizChannel.bind('pusher:subscription_error', (error) => {
+        console.error(`Error subscribing to ${channelName}:`, error);
+      });
+      
+      setChannel(quizChannel);
+      
+      // If user is admin, subscribe to admin channel
+      if (isAdmin) {
+        const adminChannelName = channelNames.admin(quizId);
+        console.log("Admin subscribing to channel:", adminChannelName);
+        
+        const adminChan = pusherClient.subscribe(adminChannelName);
+        setAdminChannel(adminChan);
+      }
+    } catch (error) {
+      console.error("Error subscribing to Pusher channels:", error);
+    }
     
     return () => {
       // Unsubscribe on cleanup
-      pusherClient.unsubscribe(channelNames.quiz(quizId));
-      if (session.user.isAdmin) {
-        pusherClient.unsubscribe(channelNames.admin(quizId));
+      try {
+        pusherClient.unsubscribe(channelNames.quiz(quizId));
+        if (isAdmin) {
+          pusherClient.unsubscribe(channelNames.admin(quizId));
+        }
+        setConnected(false);
+      } catch (error) {
+        console.error("Error unsubscribing from channels:", error);
       }
-      setConnected(false);
     };
   }, [quizId, session]);
   
   // Function to bind to events
-  const bind = (eventName, callback) => {
+  const bind = useCallback((eventName, callback) => {
     if (!channel) return () => {};
+    
+    console.log(`Binding to event '${eventName}' on channel:`, channel);
     
     channel.bind(eventName, callback);
     return () => {
       channel.unbind(eventName, callback);
     };
-  };
+  }, [channel]);
   
   // Function to bind to admin events
-  const bindAdmin = (eventName, callback) => {
+  const bindAdmin = useCallback((eventName, callback) => {
     if (!adminChannel) return () => {};
     
     adminChannel.bind(eventName, callback);
     return () => {
       adminChannel.unbind(eventName, callback);
     };
-  };
+  }, [adminChannel]);
   
   // Helper function for subscribing to events with useEffect
-  const useEvent = (eventName, callback) => {
+  const useEvent = useCallback((eventName, callback) => {
     useEffect(() => {
       if (!channel) return;
       
-      channel.bind(eventName, callback);
-      return () => {
-        channel.unbind(eventName, callback);
+      console.log(`Setting up event listener for '${eventName}'`);
+      
+      const eventCallback = (data) => {
+        console.log(`Received event '${eventName}':`, data);
+        callback(data);
       };
-    }, [channel, eventName, callback]);
-  };
+      
+      channel.bind(eventName, eventCallback);
+      
+      return () => {
+        console.log(`Unbinding event '${eventName}'`);
+        channel.unbind(eventName, eventCallback);
+      };
+    }, [channel, eventName]);
+  }, [channel]);
   
   // Helper function for subscribing to admin events with useEffect
-  const useAdminEvent = (eventName, callback) => {
+  const useAdminEvent = useCallback((eventName, callback) => {
     useEffect(() => {
       if (!adminChannel) return;
       
       adminChannel.bind(eventName, callback);
+      
       return () => {
         adminChannel.unbind(eventName, callback);
       };
-    }, [adminChannel, eventName, callback]);
-  };
+    }, [adminChannel, eventName]);
+  }, [adminChannel]);
   
   return {
     connected,

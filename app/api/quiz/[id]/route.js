@@ -2,36 +2,40 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/lib/db";
 import QuizState from "@/app/models/QuizState";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import Question from "@/app/models/Question"; // Make sure this import is included
 
 // Get quiz by ID
 export async function GET(request, { params }) {
   try {
+    // Fix: Ensure params is awaited and properly accessed
     const quizId = params.id;
     
     await connectToDatabase();
     
-    const quiz = await QuizState.findById(quizId)
-      .populate('questions')
-      .exec();
+    // First, find the quiz without populating to check if it exists
+    const quizExists = await QuizState.findById(quizId);
     
-    if (!quiz) {
+    if (!quizExists) {
       return NextResponse.json(
         { success: false, message: "Quiz not found" },
         { status: 404 }
       );
     }
     
+    // Then populate if it exists
+    const quiz = await QuizState.findById(quizId)
+      .populate('questions')
+      .exec();
+    
     // Don't send correct answers to clients
     const safeQuiz = {
       _id: quiz._id,
       status: quiz.status,
       currentQuestionIndex: quiz.currentQuestionIndex,
-      questionCount: quiz.questions.length,
+      questionCount: quiz.questions ? quiz.questions.length : 0,
       startTime: quiz.startTime,
       endTime: quiz.endTime,
-      participantCount: quiz.participants.length
+      participantCount: quiz.participants ? quiz.participants.length : 0
     };
     
     return NextResponse.json({

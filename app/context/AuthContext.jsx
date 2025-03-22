@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // Initialize user state from session or localStorage
   useEffect(() => {
     if (status === 'loading') {
       setLoading(true);
@@ -22,6 +23,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     if (session?.user) {
+      // If session exists, use that for user data
       setUser({
         id: session.user.id,
         name: session.user.name,
@@ -31,7 +33,29 @@ export const AuthProvider = ({ children }) => {
         score: session.user.score
       });
     } else {
-      setUser(null);
+      // Otherwise, try to get user data from localStorage (for participants)
+      try {
+        const storedUser = localStorage.getItem('quiz_user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
+          
+          // Add a custom header to all future requests to indicate locally stored auth
+          if (typeof window !== 'undefined') {
+            const originalFetch = window.fetch;
+            window.fetch = function(url, options = {}) {
+              options.headers = options.headers || {};
+              options.headers['x-has-local-storage'] = 'true';
+              return originalFetch(url, options);
+            };
+          }
+        } else {
+          setUser(null);
+        }
+      } catch (e) {
+        console.error('Error retrieving stored user:', e);
+        setUser(null);
+      }
     }
 
     setLoading(false);
@@ -119,13 +143,28 @@ export const AuthProvider = ({ children }) => {
       }
 
       // Set user data locally
-      setUser({
+      const userData = {
         id: data.data._id,
         name: data.data.name,
         currentQuiz: data.data.currentQuiz,
         score: data.data.score,
         isAdmin: false
-      });
+      };
+      
+      setUser(userData);
+      
+      // Save user data to localStorage for persistence
+      localStorage.setItem('quiz_user', JSON.stringify(userData));
+      
+      // Add a custom header to future requests
+      if (typeof window !== 'undefined') {
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options = {}) {
+          options.headers = options.headers || {};
+          options.headers['x-has-local-storage'] = 'true';
+          return originalFetch(url, options);
+        };
+      }
 
       return {
         success: true,
@@ -142,7 +181,19 @@ export const AuthProvider = ({ children }) => {
 
   // Logout function
   const logout = async () => {
-    await signOut({ redirect: false });
+    // Clear participant data from localStorage
+    try {
+      localStorage.removeItem('quiz_user');
+    } catch (e) {
+      console.error('Error clearing stored user:', e);
+    }
+    
+    // Sign out from NextAuth if using it
+    if (session) {
+      await signOut({ redirect: false });
+    }
+    
+    // Reset user state
     setUser(null);
     router.push('/');
   };

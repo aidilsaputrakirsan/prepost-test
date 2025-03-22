@@ -2,24 +2,37 @@
 import Pusher from 'pusher';
 import PusherClient from 'pusher-js';
 
-// app/lib/pusher.js
-// Simplified fallback implementation
+// Environment variables
+const appId = process.env.NEXT_PUBLIC_PUSHER_APP_ID || '12345';
+const key = process.env.NEXT_PUBLIC_PUSHER_KEY || 'mock-key';
+const secret = process.env.PUSHER_SECRET || 'mock-secret';
+const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'eu';
 
-// Server-side pusher (fallback)
-export const pusher = {
-  trigger: async () => true
+// Server-side Pusher instance (for server components/API routes)
+export const pusher = new Pusher({
+  appId,
+  key,
+  secret,
+  cluster,
+  useTLS: true,
+});
+
+// Client-side Pusher instance
+export const pusherClient = new PusherClient(key, {
+  cluster,
+  forceTLS: true,
+});
+
+// Helper function to trigger events
+export const triggerEvent = async (channel, event, data) => {
+  try {
+    await pusher.trigger(channel, event, data);
+    return true;
+  } catch (error) {
+    console.error('Error triggering Pusher event:', error);
+    return false;
+  }
 };
-
-// Client-side pusher (fallback)
-export const pusherClient = {
-  subscribe: () => ({
-    bind: () => {},
-    unbind: () => {}
-  })
-};
-
-// Helper function
-export const triggerEvent = async () => true;
 
 // Channel naming conventions
 export const channelNames = {

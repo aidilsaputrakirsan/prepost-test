@@ -9,7 +9,8 @@ import { authOptions } from "../../../auth/[...nextauth]/route";
 // Get participants for a quiz
 export async function GET(request, { params }) {
   try {
-    const quizId = params.quizId;
+    // Fix: Properly destructure the parameter
+    const { quizId } = params;
     const session = await getServerSession(authOptions);
     
     if (!session) {

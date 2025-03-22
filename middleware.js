@@ -30,14 +30,15 @@ export async function middleware(request) {
   
   const apiAdminRoutes = [
     "/api/quiz",
-    "/api/user",
   ];
 
-  // Check admin routes - now we need to handle the route group approach
-  // Next.js interprets app/(admin)/panel/page.js as /panel in the URL
-  // So we need a more flexible check
-
-  // Admin check for route groups
+  // Allow public access to participant creation endpoint
+  if (pathname === "/api/user" && request.method === "POST") {
+    console.log("Allowing public access to user creation");
+    return NextResponse.next();
+  }
+  
+  // Check admin routes
   const isAdminRoute = adminPaths.some(path => pathname.includes(path)) || 
                       pathname.startsWith("/panel") || 
                       pathname.startsWith("/create-question") ||
@@ -62,8 +63,19 @@ export async function middleware(request) {
   
   // Check user protected routes
   if (userProtectedRoutes.some(route => pathname.startsWith(route))) {
-    if (!token) {
+    // Check for client-side stored participant data
+    const cookies = request.cookies;
+    const hasLocalStorage = request.headers.get('x-has-local-storage') === 'true';
+    
+    if (!token && !hasLocalStorage) {
       console.log("Redirecting to home - no token for protected route");
+      
+      // Special case for waiting room - redirect to join page with quiz ID
+      if (pathname.startsWith('/waiting-room/')) {
+        const quizId = pathname.split('/')[2];
+        return NextResponse.redirect(new URL(`/join/${quizId}`, request.url));
+      }
+      
       return NextResponse.redirect(new URL("/", request.url));
     }
   }
@@ -100,7 +112,6 @@ export const config = {
     "/results/:path*",
     "/leaderboard/:path*",
     // API routes that need protection
-    "/api/quiz/:path*",
-    "/api/user/:path*",
+    "/api/:path*",
   ],
 };
