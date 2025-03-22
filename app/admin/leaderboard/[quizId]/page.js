@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/app/context/AuthContext';
@@ -20,18 +20,8 @@ export default function AdminLeaderboard() {
   const [error, setError] = useState('');
   const [exportLoading, setExportLoading] = useState(false);
   
-  // Validate admin access
-  useEffect(() => {
-    if (!user || !user.isAdmin) {
-      router.push('/login');
-      return;
-    }
-    
-    fetchLeaderboardData();
-  }, [user, router, quizId]);
-  
-  // Fetch leaderboard data
-  const fetchLeaderboardData = async () => {
+  // FIXED: Wrap fetchLeaderboardData with useCallback
+  const fetchLeaderboardData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -61,7 +51,17 @@ export default function AdminLeaderboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [quizId]);
+  
+  // Validate admin access - FIXED: Added fetchLeaderboardData to dependencies
+  useEffect(() => {
+    if (!user || !user.isAdmin) {
+      router.push('/login');
+      return;
+    }
+    
+    fetchLeaderboardData();
+  }, [user, router, quizId, fetchLeaderboardData]);
   
   // Export leaderboard as CSV
   const handleExportCSV = () => {
@@ -194,7 +194,7 @@ export default function AdminLeaderboard() {
             <div className="bg-blue-50 p-4 rounded-lg text-center">
               <p className="text-blue-600">No results available yet. This could be because:</p>
               <ul className="list-disc list-inside mt-2 text-gray-700">
-                <li>The quiz hasn't finished yet</li>
+                <li>The quiz has not finished yet</li>
                 <li>No participants submitted any answers</li>
                 <li>There was an error calculating the results</li>
               </ul>

@@ -121,37 +121,37 @@ export default function usePusher(quizId) {
     };
   }, [adminChannel]);
   
-  // Helper function for subscribing to events with useEffect
-  const useEvent = useCallback((eventName, callback) => {
+  // FIXED: Helper function for subscribing to events with useEffect
+  const useEvent = useCallback((eventName, eventCallback) => {
     useEffect(() => {
       if (!channel) return;
       
       console.log(`Setting up event listener for '${eventName}'`);
       
-      const eventCallback = (data) => {
+      const wrappedCallback = (data) => {
         console.log(`Received event '${eventName}':`, data);
-        callback(data);
+        eventCallback(data);
       };
       
       // First try to unbind any existing callbacks to prevent duplicates
       try {
-        channel.unbind(eventName, eventCallback);
+        channel.unbind(eventName, wrappedCallback);
       } catch (e) {
         // Ignore any errors when unbinding
       }
       
       // Now bind the new callback
-      channel.bind(eventName, eventCallback);
+      channel.bind(eventName, wrappedCallback);
       
       return () => {
         console.log(`Unbinding event '${eventName}'`);
-        channel.unbind(eventName, eventCallback);
+        channel.unbind(eventName, wrappedCallback);
       };
-    }, [channel, eventName]);
+    }, [eventName]);
   }, [channel]);
   
-  // Helper function for subscribing to admin events with useEffect
-  const useAdminEvent = useCallback((eventName, callback) => {
+  // FIXED: Helper function for subscribing to admin events with useEffect
+  const useAdminEvent = useCallback((eventName, eventCallback) => {
     useEffect(() => {
       if (!adminChannel) return;
       
@@ -163,12 +163,12 @@ export default function usePusher(quizId) {
       }
       
       // Now bind the new callback
-      adminChannel.bind(eventName, callback);
+      adminChannel.bind(eventName, eventCallback);
       
       return () => {
-        adminChannel.unbind(eventName, callback);
+        adminChannel.unbind(eventName, eventCallback);
       };
-    }, [adminChannel, eventName]);
+    }, [eventName]);
   }, [adminChannel]);
   
   return {

@@ -34,10 +34,10 @@ export default function QuizControl() {
     }
     
     fetchQuizData();
-  }, [user, router, quizId]);
+  }, [user, router, quizId, fetchQuizData]);
   
   // Fetch quiz data
-  const fetchQuizData = async () => {
+  const fetchQuizData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -75,7 +75,7 @@ export default function QuizControl() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [quizId]);
   
   // Start quiz
   const handleStartQuiz = async () => {

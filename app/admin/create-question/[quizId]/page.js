@@ -33,10 +33,10 @@ export default function CreateQuestion() {
     }
     
     fetchQuestions();
-  }, [user, router, quizId]);
+  }, [user, router, quizId, fetchQuestions]);
   
   // Fetch existing questions
-  const fetchQuestions = async () => {
+  const fetchQuestions = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -54,7 +54,7 @@ export default function CreateQuestion() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [quizId]);
   
   // Handle text input change
   const handleTextChange = (e) => {

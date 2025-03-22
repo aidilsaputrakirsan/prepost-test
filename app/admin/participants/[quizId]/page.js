@@ -26,10 +26,10 @@ export default function ParticipantsList() {
     }
     
     fetchParticipants();
-  }, [user, router, quizId]);
+  }, [user, router, quizId, fetchParticipants]);
   
   // Fetch participants
-  const fetchParticipants = async () => {
+  const fetchParticipants = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -47,7 +47,7 @@ export default function ParticipantsList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [quizId]);
   
   // Remove participant
   const handleRemoveParticipant = async (participantId) => {
