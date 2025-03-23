@@ -6,6 +6,7 @@ import Question from "@/app/models/Question";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { pusher, channelNames, eventNames, triggerEvent } from "@/app/lib/pusher";
+import { setupAutoAdvancement } from "../next-question/route";
 
 export async function POST(request, { params }) {
   try {
@@ -20,6 +21,9 @@ export async function POST(request, { params }) {
         { status: 403 }
       );
     }
+    
+    // Get auto-advance setting from request body, default to true
+    const { autoAdvance = true } = await request.json().catch(() => ({ autoAdvance: true }));
     
     await connectToDatabase();
     
@@ -68,8 +72,6 @@ export async function POST(request, { params }) {
     
     console.log("Sending quiz data:", quizId);
     
-    // IMPORTANT: Changed event sequence to improve reliability
-    
     // First trigger quiz started event
     console.log("Triggering quiz started event");
     await Promise.all([
@@ -105,39 +107,21 @@ export async function POST(request, { params }) {
       )
     ]);
     
-    // Start timer after events are sent
-    setTimeout(async () => {
-      let timeLeft = question.timeLimit;
-      const timerInterval = setInterval(async () => {
-        timeLeft -= 1;
-        
-        // Send timer update
-        await triggerEvent(
-          channelNames.quiz(quizId),
-          eventNames.timerUpdate,
-          { timeLeft }
-        );
-        
-        // When timer ends
-        if (timeLeft <= 0) {
-          clearInterval(timerInterval);
-          
-          // Let admin know time is up for this question
-          await triggerEvent(
-            channelNames.admin(quizId),
-            'question-time-up',
-            { questionIndex: 0 }
-          );
-        }
-      }, 1000);
-    }, 1000);
+    // Set up auto-advancement if enabled
+    if (autoAdvance) {
+      // Use a short delay to allow clients to connect and receive the first question
+      setTimeout(() => {
+        setupAutoAdvancement(quizId, question.timeLimit, 0);
+      }, 1500);
+    }
     
     return NextResponse.json({
       success: true,
       data: {
         quizId,
         status: 'active',
-        currentQuestionIndex: 0
+        currentQuestionIndex: 0,
+        autoAdvance
       }
     });
   } catch (error) {

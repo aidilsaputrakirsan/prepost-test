@@ -19,6 +19,9 @@ export default function QuizQuestion() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const timerIntervalRef = useRef(null);
+  const pollIntervalRef = useRef(null);
+  const questionCheckerIntervalRef = useRef(null);
+  const lastQuestionIdRef = useRef(null);
   
   // Load user data once on mount
   useEffect(() => {
@@ -57,7 +60,15 @@ export default function QuizQuestion() {
         if (savedResult) {
           setAnswerResult(JSON.parse(savedResult));
         }
+      } else {
+        // Reset answer state for new question
+        setHasAnsweredCurrent(false);
+        setAnswerResult(null);
+        setSelectedOption(null);
       }
+      
+      // Update last question ID reference
+      lastQuestionIdRef.current = currentQuestion.id;
     } catch (e) {
       console.error("Error checking answered questions:", e);
     }
@@ -118,6 +129,150 @@ export default function QuizQuestion() {
     }
   }, [quizId, userData]);
   
+  // Set up Pusher event listening
+  useEffect(() => {
+    if (!userData || !quizId) return;
+    
+    // Set up Pusher
+    try {
+      const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
+      const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+      
+      if (window.Pusher && pusherKey) {
+        const pusher = new window.Pusher(pusherKey, {
+          cluster: pusherCluster || 'eu'
+        });
+        
+        const channel = pusher.subscribe(`quiz-${quizId}`);
+        
+        // Listen for new questions
+        channel.bind('question-sent', (data) => {
+          console.log("New question received via Pusher:", data);
+          
+          // Check if this is a different question
+          if (currentQuestion && data.id !== currentQuestion.id) {
+            console.log("Different question detected, updating");
+            
+            // Update question data
+            setCurrentQuestion(data);
+            setTimeLeft(data.timeLimit);
+            setStartTime(Date.now());
+            setHasAnsweredCurrent(false);
+            setAnswerResult(null);
+            setSelectedOption(null);
+          }
+        });
+        
+        // Listen for timer updates
+        channel.bind('timer-update', (data) => {
+          setTimeLeft(data.timeLeft);
+        });
+        
+        // Listen for quiz end
+        channel.bind('quiz-stopped', () => {
+          console.log("Quiz stopped event received");
+          localStorage.setItem('quiz_status', 'finished');
+          window.location.href = `/results/${quizId}`;
+        });
+        
+        channel.bind('quiz-ended', () => {
+          console.log("Quiz ended event received");
+          localStorage.setItem('quiz_status', 'finished');
+          window.location.href = `/results/${quizId}`;
+        });
+        
+        // Clean up on unmount
+        return () => {
+          channel.unbind_all();
+          pusher.unsubscribe(`quiz-${quizId}`);
+        };
+      }
+    } catch (err) {
+      console.error("Error setting up Pusher:", err);
+    }
+  }, [userData, quizId, currentQuestion]);
+  
+  // Set up fallback polling to check for new questions
+  useEffect(() => {
+    if (!userData || !quizId) return;
+    
+    // Clear any existing interval
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+    }
+    
+    // Set up polling at a regular interval (every 5 seconds)
+    const pollInterval = setInterval(async () => {
+      try {
+        console.log("Polling for quiz status and current question");
+        
+        // First check the quiz status
+        const quizResponse = await fetch(`/api/quiz/${quizId}`, {
+          headers: {
+            'x-participant-id': userData.id,
+            'x-quiz-id': quizId,
+            'x-has-local-storage': 'true'
+          }
+        });
+        
+        if (!quizResponse.ok) {
+          console.error("Failed to fetch quiz status");
+          return;
+        }
+        
+        const quizData = await quizResponse.json();
+        
+        if (quizData.success) {
+          // Check if quiz is finished
+          if (quizData.data.status === 'finished') {
+            console.log("Poll detected finished quiz, redirecting...");
+            localStorage.setItem('quiz_status', 'finished');
+            window.location.href = `/results/${quizId}`;
+            return;
+          }
+          
+          // If active, check current question
+          if (quizData.data.status === 'active') {
+            // Fetch current question
+            const response = await fetch(`/api/quiz/${quizId}/current-question`, {
+              headers: {
+                'x-participant-id': userData.id,
+                'x-quiz-id': quizId,
+                'x-has-local-storage': 'true'
+              }
+            });
+            
+            if (!response.ok) {
+              console.error("Failed to fetch current question during poll");
+              return;
+            }
+            
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+              // Check if current question is different from what we're showing
+              if (!currentQuestion || data.data.id !== currentQuestion.id) {
+                console.log("Poll detected new question, refreshing page");
+                window.location.reload();
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error during poll:", err);
+      }
+    }, 5000);
+    
+    pollIntervalRef.current = pollInterval;
+    
+    // Clean up on unmount
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, [userData, quizId, currentQuestion]);
+  
   // Timer functionality
   useEffect(() => {
     if (timerIntervalRef.current) {
@@ -140,6 +295,12 @@ export default function QuizQuestion() {
             // Auto-submit if an option is selected
             if (selectedOption !== null) {
               handleAnswerSubmit();
+            } else {
+              // If time runs out and no answer selected, trigger a check for new question
+              setTimeout(() => {
+                console.log("Time ran out with no answer, checking for new question");
+                window.location.reload();
+              }, 2000);
             }
             return 0;
           }
@@ -155,6 +316,64 @@ export default function QuizQuestion() {
       }
     };
   }, [currentQuestion, hasAnsweredCurrent, selectedOption, timeLeft]);
+  
+  // Check every few seconds if a new question should be shown after answering
+  useEffect(() => {
+    if (!userData || !quizId) return;
+    
+    // Only set up this checker if user has already answered
+    if (hasAnsweredCurrent && answerResult) {
+      // Clear any existing interval
+      if (questionCheckerIntervalRef.current) {
+        clearInterval(questionCheckerIntervalRef.current);
+      }
+      
+      console.log("Setting up post-answer question checker");
+      
+      // Check every 3 seconds if there's a new question
+      const interval = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/quiz/${quizId}/current-question`, {
+            headers: {
+              'x-participant-id': userData.id,
+              'x-quiz-id': quizId,
+              'x-has-local-storage': 'true'
+            }
+          });
+          
+          if (!response.ok) return;
+          
+          const data = await response.json();
+          
+          // If quiz is finished, redirect to results
+          if (!data.success && data.quizStatus === 'finished') {
+            console.log("Quiz has finished, redirecting to results");
+            localStorage.setItem('quiz_status', 'finished');
+            window.location.href = `/results/${quizId}`;
+            return;
+          }
+          
+          // Check if we have a new question
+          if (data.success && data.data && lastQuestionIdRef.current) {
+            if (data.data.id !== lastQuestionIdRef.current) {
+              console.log("New question detected after answering, refreshing page");
+              window.location.reload();
+            }
+          }
+        } catch (err) {
+          console.error("Error checking for new question:", err);
+        }
+      }, 3000);
+      
+      questionCheckerIntervalRef.current = interval;
+      
+      return () => {
+        if (questionCheckerIntervalRef.current) {
+          clearInterval(questionCheckerIntervalRef.current);
+        }
+      };
+    }
+  }, [userData, quizId, hasAnsweredCurrent, answerResult]);
   
   // Handle option selection
   const handleOptionSelect = (index) => {
@@ -243,6 +462,11 @@ export default function QuizQuestion() {
           
           setHasAnsweredCurrent(true);
           setAnswerResult(data.data);
+          
+          // Start checking for next question after a short delay
+          setTimeout(() => {
+            fetchNextQuestion();
+          }, 2000);
         } else {
           setError(data.message || "Failed to submit answer");
         }
@@ -250,6 +474,44 @@ export default function QuizQuestion() {
         console.error("Error submitting answer:", err);
         setError("Network error. Please try again.");
       }
+    }
+  };
+  
+  // Function to fetch and check for next question
+  const fetchNextQuestion = async () => {
+    try {
+      const response = await fetch(`/api/quiz/${quizId}/current-question`, {
+        headers: {
+          'x-participant-id': userData.id,
+          'x-quiz-id': quizId,
+          'x-has-local-storage': 'true'
+        }
+      });
+      
+      if (!response.ok) {
+        console.error("Failed to check for next question");
+        return;
+      }
+      
+      const data = await response.json();
+      
+      // If quiz is finished, redirect to results
+      if (!data.success && data.quizStatus === 'finished') {
+        console.log("Quiz has finished, redirecting to results");
+        localStorage.setItem('quiz_status', 'finished');
+        window.location.href = `/results/${quizId}`;
+        return;
+      }
+      
+      // Check if we have a new question
+      if (data.success && data.data && currentQuestion) {
+        if (data.data.id !== currentQuestion.id) {
+          console.log("New question detected, refreshing page");
+          window.location.reload();
+        }
+      }
+    } catch (err) {
+      console.error("Error checking for next question:", err);
     }
   };
   
@@ -302,7 +564,8 @@ export default function QuizQuestion() {
           )}
           
           <div className="mt-4 text-center">
-            <p>No question is currently available. Please wait for the admin to start the quiz or move to the next question.</p>
+            <p>No question is currently available. The page will automatically refresh when the next question is ready.</p>
+            <p className="text-sm text-gray-500 mt-2">If you don't see a question soon, please wait or check your connection.</p>
           </div>
           
           <div className="mt-6">
@@ -310,7 +573,7 @@ export default function QuizQuestion() {
               onClick={() => window.location.reload()}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-200 mx-2"
             >
-              Refresh Page
+              Refresh Page Manually
             </button>
             
             <button
@@ -381,7 +644,7 @@ export default function QuizQuestion() {
           <div className="mt-6">
             <div className="mb-6 bg-blue-50 p-6 border border-blue-100 rounded-lg text-center">
               <h3 className="text-xl font-bold text-blue-800 mb-2">Thank You For Your Answer</h3>
-              <p className="text-blue-600 mb-4">Your answer has been recorded. Please wait for the next question.</p>
+              <p className="text-blue-600 mb-4">Your answer has been recorded. The page will automatically update when the next question is ready.</p>
               
               <div className={`p-4 rounded-lg text-center mb-4 ${
                 answerResult.isCorrect 
@@ -401,25 +664,12 @@ export default function QuizQuestion() {
                 </p>
               </div>
               
-              <p className="text-sm text-gray-500 mt-4">
-                When the admin moves to the next question or ends the quiz, this page will automatically update.
-              </p>
-            </div>
-            
-            <div className="mt-4 text-center">
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-200 mx-2"
-              >
-                Refresh Page
-              </button>
-              
-              <button
-                onClick={goToResults}
-                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition duration-200 mx-2"
-              >
-                View Results
-              </button>
+              <div className="mt-2 p-3 bg-yellow-50 border border-yellow-100 rounded-lg">
+                <p className="text-sm text-yellow-700">
+                  <span className="font-medium">Waiting for next question...</span>
+                  <span className="inline-block ml-2 w-4 h-4 border-t-2 border-r-2 border-yellow-500 rounded-full animate-spin"></span>
+                </p>
+              </div>
             </div>
           </div>
         )}
