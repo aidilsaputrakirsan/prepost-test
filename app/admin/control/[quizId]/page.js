@@ -79,28 +79,72 @@ export default function QuizControl() {
     fetchQuizData();
   }, [user, router, quizId, fetchQuizData]);
   
-  // Setup Pusher event handlers
+  // Setup Pusher event handler for auto-advancement
   useEffect(() => {
     if (quizStatus === 'active') {
-      // Listen for timer updates
-      const pusherClient = window.Pusher ? new window.Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
-        cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER
-      }) : null;
+      // Listen for timer-up events which may require admin action
+      const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
+      const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
       
-      if (pusherClient) {
-        const channel = pusherClient.subscribe(`quiz-${quizId}`);
+      if (window.Pusher && pusherKey) {
+        const pusher = new window.Pusher(pusherKey, {
+          cluster: pusherCluster || 'eu'
+        });
         
-        channel.bind('timer-update', (data) => {
-          setTimeLeft(data.timeLeft);
+        const adminChannel = pusher.subscribe(`private-admin-${quizId}`);
+        const quizChannel = pusher.subscribe(`quiz-${quizId}`);
+        
+        // Listen for question-time-up event
+        adminChannel.bind('question-time-up', async (data) => {
+          console.log("Question time up event received:", data);
+          
+          if (autoAdvance) {
+            // Use a slight delay to allow for any last-second answers
+            setTimeout(async () => {
+              console.log("Auto-advancing to next question");
+              try {
+                const response = await fetch(`/api/quiz/${quizId}/auto-advance`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    autoAdvanceToken: 'admin-auto-advance'
+                  })
+                });
+                
+                if (!response.ok) {
+                  console.error("Failed to auto-advance:", response.status);
+                  setError('Auto-advancement failed. Try manual advancement.');
+                } else {
+                  // Refresh quiz data
+                  fetchQuizData();
+                }
+              } catch (err) {
+                console.error("Error during auto-advancement:", err);
+                setError('Auto-advancement failed. Try manual advancement.');
+              }
+            }, 5000);
+          } else {
+            console.log("Auto-advancement disabled, waiting for manual advancement");
+          }
+        });
+        
+        // Listen for time-up events from the client
+        quizChannel.bind('time-up', (data) => {
+          console.log("Time up event from quiz channel:", data);
+          setTimeLeft(0);
         });
         
         return () => {
-          channel.unbind_all();
-          pusherClient.unsubscribe(`quiz-${quizId}`);
+          adminChannel.unbind_all();
+          quizChannel.unbind_all();
+          pusher.unsubscribe(`private-admin-${quizId}`);
+          pusher.unsubscribe(`quiz-${quizId}`);
         };
       }
     }
-  }, [quizId, quizStatus]);
+  }, [quizId, quizStatus, autoAdvance, fetchQuizData]);
   
   // Start quiz
   const handleStartQuiz = async () => {

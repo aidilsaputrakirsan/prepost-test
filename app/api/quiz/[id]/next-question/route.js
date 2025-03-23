@@ -119,7 +119,8 @@ export const setupAutoAdvancement = (quizId, timeLimit, questionIndex) => {
     quizMetadata.set(quizId, {
       currentQuestionIndex: questionIndex,
       autoAdvance: true,
-      startTime: Date.now()
+      startTime: Date.now(),
+      timeLimit: timeLimit
     });
     
     console.log(`Setting up auto-advancement for quiz ${quizId} with ${timeLimit} seconds`);
@@ -131,34 +132,53 @@ export const setupAutoAdvancement = (quizId, timeLimit, questionIndex) => {
     const timerInterval = setInterval(async () => {
       timeLeft -= 1;
       
-      // Send timer update
-      await pusher.trigger(
-        channelNames.quiz(quizId),
-        eventNames.timerUpdate,
-        { timeLeft }
-      );
+      try {
+        // Send timer update
+        await pusher.trigger(
+          channelNames.quiz(quizId),
+          eventNames.timerUpdate,
+          { timeLeft }
+        );
+        
+        // Also send on the direct channel format for better compatibility
+        await pusher.trigger(
+          `quiz-${quizId}`,
+          'timer-update',
+          { timeLeft }
+        );
+      } catch (e) {
+        console.error("Error sending timer update:", e);
+      }
       
       // When timer ends
       if (timeLeft <= 0) {
         clearInterval(timerInterval);
         
-        // Let admin know time is up for this question
-        await pusher.trigger(
-          channelNames.admin(quizId),
-          'question-time-up',
-          { questionIndex }
-        );
-        
-        // Wait 5 seconds to allow last-moment answers to be submitted
-        setTimeout(async () => {
-          const metadata = quizMetadata.get(quizId);
+        try {
+          // Let admin know time is up for this question
+          await pusher.trigger(
+            channelNames.admin(quizId),
+            'question-time-up',
+            { questionIndex }
+          );
           
-          // Only auto advance if the setting is enabled and we're still on the same question
-          if (metadata && metadata.autoAdvance && metadata.currentQuestionIndex === questionIndex) {
-            // Move to next question automatically
-            await moveToNextQuestion(quizId);
-          }
-        }, 5000);
+          // Notify clients that time is up
+          await pusher.trigger(
+            channelNames.quiz(quizId),
+            'time-up',
+            { 
+              questionIndex,
+              nextAction: 'auto-advance'
+            }
+          );
+        } catch (e) {
+          console.error("Error sending time-up notification:", e);
+        }
+        
+        console.log(`Timer expired for quiz ${quizId}, scheduling auto-advancement`);
+        
+        // For Vercel, we don't use setTimeout on the server-side since functions may terminate
+        // Instead, we'll rely on client-side auto-advancement triggerring our endpoint
       }
     }, 1000);
     

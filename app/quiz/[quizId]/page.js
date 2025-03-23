@@ -168,6 +168,40 @@ export default function QuizQuestion() {
           setTimeLeft(data.timeLeft);
         });
         
+        // Listen for time-up event (specific for Vercel compatibility)
+        channel.bind('time-up', async (data) => {
+          console.log("Time up event received:", data);
+          
+          // If we're set for auto-advancement and already answered, help trigger it
+          if (data.nextAction === 'auto-advance' && hasAnsweredCurrent) {
+            console.log("Time up and already answered, helping with auto-advancement");
+            
+            // Wait a bit to let other participants finish
+            setTimeout(async () => {
+              try {
+                // Any participant can trigger auto-advancement
+                const response = await fetch(`/api/quiz/${quizId}/auto-advance`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-participant-id': userData.id,
+                  },
+                  body: JSON.stringify({
+                    autoAdvanceToken: 'client-auto-advance'
+                  })
+                });
+                
+                console.log("Auto-advance response:", response.status);
+              } catch (err) {
+                console.error("Error triggering auto-advance:", err);
+              }
+            }, 2000 + Math.random() * 2000); // Random delay to prevent all clients triggering at once
+          } else if (!hasAnsweredCurrent) {
+            // If time is up and we haven't answered, just wait for the next question
+            console.log("Time up but haven't answered, waiting for next question");
+          }
+        });
+        
         // Event to handle last question being reached
         const handleQuizEnd = () => {
           console.log("Quiz ended event received");
