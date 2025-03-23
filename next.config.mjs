@@ -37,7 +37,7 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Add explicit CSS optimization settings
+  // Add CSS handling without using experimental features
   webpack: (config, { isServer }) => {
     // Force full CSS optimization even in production
     if (!isServer) {
@@ -45,15 +45,10 @@ const nextConfig = {
     }
     return config;
   },
-  // Handle static assets properly
-  images: {
-    domains: [],
-    unoptimized: process.env.NODE_ENV !== 'production',
-  },
-  // Enable experimental features that might help with CSS
-  experimental: {
-    optimizeCss: true,
-  },
+  // Remove experimental features that cause problems
+  // experimental: {
+  //   optimizeCss: true, // <-- Remove this line
+  // },
 };
 
 export default nextConfig;
