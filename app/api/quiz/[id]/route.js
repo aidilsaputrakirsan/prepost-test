@@ -12,9 +12,8 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 // Get quiz by ID
 export async function GET(request, { params }) {
   try {
-    // Properly destructure and handle the ID parameter
-    const { id } = params;
-    const quizId = String(id || '');
+    // Properly handle the ID parameter - don't destructure directly
+    const quizId = String(params.id || '');
     
     await connectToDatabase();
     
@@ -61,8 +60,7 @@ export async function GET(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     // Access the quiz ID from params
-    const { id } = params;
-    const quizId = String(id || '');
+    const quizId = String(params.id || '');
     
     // Verify admin authentication
     const session = await getServerSession(authOptions);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/app/context/AuthContext';
@@ -27,6 +27,8 @@ export default function WaitingRoom() {
   const [error, setError] = useState('');
   const [currentQuote, setCurrentQuote] = useState('');
   const [localAuthChecked, setLocalAuthChecked] = useState(false);
+  const [lastPollTime, setLastPollTime] = useState(0);
+  const pollIntervalRef = useRef(null);
   
   const randomQuotes = [
     "Take a deep breath and prepare for this test!",
@@ -80,19 +82,40 @@ export default function WaitingRoom() {
             // If quiz is active according to localStorage, redirect to quiz page
             if (storedStatus === 'active') {
               console.log("Quiz is active according to localStorage, redirecting to quiz page");
-              router.push(`/quiz/${quizId}`);
+              window.location.href = `/quiz/${quizId}`;
               return;
             } else if (storedStatus === 'finished') {
               console.log("Quiz is finished according to localStorage, redirecting to results page");
-              router.push(`/results/${quizId}`);
+              window.location.href = `/results/${quizId}`;
               return;
             }
             
-            // Reload to ensure context is up-to-date
-            setTimeout(() => {
-              window.location.reload();
-            }, 300);
-            return;
+            // Apply auth headers for future requests
+            const userData = JSON.parse(storedUser);
+            if (typeof window !== 'undefined') {
+              const originalFetch = window.fetch;
+              window.fetch = function(url, options = {}) {
+                options = options || {};
+                let headers = {};
+                
+                if (options.headers) {
+                  if (options.headers instanceof Headers) {
+                    for (const [key, value] of options.headers.entries()) {
+                      headers[key] = value;
+                    }
+                  } else {
+                    headers = { ...options.headers };
+                  }
+                }
+                
+                headers['x-participant-id'] = userData.id;
+                headers['x-quiz-id'] = quizId;
+                headers['x-has-local-storage'] = 'true';
+                
+                options.headers = headers;
+                return originalFetch(url, options);
+              };
+            }
           }
         } else {
           console.log("No valid auth data for this quiz, redirecting to join");
@@ -101,7 +124,6 @@ export default function WaitingRoom() {
         }
       } catch (e) {
         console.error("localStorage check error:", e);
-        // If localStorage access fails, redirect to join
         router.push(`/join/${quizId}`);
         return;
       }
@@ -128,10 +150,82 @@ export default function WaitingRoom() {
     }
   }, [user, quizId, joinWaitingRoom, connected, joined, localAuthChecked]);
 
-  // Redirect when quiz starts
+  // Aggressive polling mechanism to check quiz status
+  useEffect(() => {
+    if (!quizId || !localAuthChecked) return;
+    
+    // Start polling
+    const startPolling = () => {
+      console.log("Starting quiz status polling...");
+      
+      // Clear any existing interval
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+      
+      // Perform an immediate check
+      checkQuizStatus();
+      
+      // Set up new polling interval (every 2 seconds)
+      pollIntervalRef.current = setInterval(checkQuizStatus, 2000);
+    };
+    
+    // Function to check quiz status
+    const checkQuizStatus = async () => {
+      try {
+        console.log("Polling for quiz status...");
+        setLastPollTime(Date.now());
+        
+        const response = await fetch(`/api/quiz/${quizId}`);
+        if (!response.ok) {
+          console.error("Failed to fetch quiz status:", response.status);
+          return;
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          const currentStatus = data.data.status;
+          console.log(`Polled quiz status: ${currentStatus}`);
+          
+          if (currentStatus === 'active') {
+            console.log("Poll detected active quiz, redirecting...");
+            
+            // Update localStorage
+            localStorage.setItem('quiz_status', 'active');
+            
+            // IMPORTANT: Use direct window location for most reliable redirect
+            window.location.href = `/quiz/${quizId}`;
+          } else if (currentStatus === 'finished') {
+            console.log("Poll detected finished quiz, redirecting...");
+            
+            // Update localStorage
+            localStorage.setItem('quiz_status', 'finished');
+            
+            // IMPORTANT: Use direct window location for most reliable redirect
+            window.location.href = `/results/${quizId}`;
+          }
+        }
+      } catch (err) {
+        console.error("Error polling quiz status:", err);
+      }
+    };
+    
+    startPolling();
+    
+    // Clean up on unmount
+    return () => {
+      if (pollIntervalRef.current) {
+        console.log("Cleaning up quiz status polling");
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, [quizId, localAuthChecked]);
+
+  // Redundant check using the Quiz context state (handle Pusher events if they work)
   useEffect(() => {
     if (quizStatus === 'active') {
-      console.log("Quiz is now active, redirecting to quiz page");
+      console.log("Quiz context detected active quiz, redirecting...");
       
       // Store quiz status before redirect
       try {
@@ -140,9 +234,10 @@ export default function WaitingRoom() {
         console.error("Error storing quiz status:", e);
       }
       
-      router.push(`/quiz/${quizId}`);
+      // IMPORTANT: Use direct window location for most reliable redirect
+      window.location.href = `/quiz/${quizId}`;
     } else if (quizStatus === 'finished') {
-      console.log("Quiz is finished, redirecting to results");
+      console.log("Quiz context detected finished quiz, redirecting...");
       
       // Store quiz status before redirect
       try {
@@ -151,9 +246,10 @@ export default function WaitingRoom() {
         console.error("Error storing quiz status:", e);
       }
       
-      router.push(`/results/${quizId}`);
+      // IMPORTANT: Use direct window location for most reliable redirect
+      window.location.href = `/results/${quizId}`;
     }
-  }, [quizStatus, router, quizId]);
+  }, [quizStatus, quizId]);
 
   // Random quotes
   useEffect(() => {
@@ -174,6 +270,35 @@ export default function WaitingRoom() {
       router.push('/');
     }
   };
+
+  // Direct check on component mount
+  useEffect(() => {
+    // Function to check if quiz is already started
+    const checkIfQuizStarted = async () => {
+      try {
+        const response = await fetch(`/api/quiz/${quizId}`);
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        
+        if (data.success && data.data.status === 'active') {
+          console.log("Initial check found quiz is already active!");
+          localStorage.setItem('quiz_status', 'active');
+          window.location.href = `/quiz/${quizId}`;
+        } else if (data.success && data.data.status === 'finished') {
+          console.log("Initial check found quiz is already finished!");
+          localStorage.setItem('quiz_status', 'finished');
+          window.location.href = `/results/${quizId}`;
+        }
+      } catch (err) {
+        console.error("Error checking quiz status on mount:", err);
+      }
+    };
+    
+    if (quizId && localAuthChecked) {
+      checkIfQuizStarted();
+    }
+  }, [quizId, localAuthChecked]);
 
   if (loading || !localAuthChecked) {
     return <Loading message="Loading waiting room..." />;
@@ -262,6 +387,24 @@ export default function WaitingRoom() {
           >
             Back to Home
           </Link>
+        </div>
+        
+        {/* Manual refresh button for testing */}
+        <div className="mt-4 text-center">
+          <button
+            onClick={async () => {
+              try {
+                const resp = await fetch(`/api/quiz/${quizId}`);
+                const data = await resp.json();
+                alert(`Current quiz status: ${data.data.status}`);
+              } catch (err) {
+                alert(`Error checking status: ${err.message}`);
+              }
+            }}
+            className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300 transition duration-200"
+          >
+            Check Quiz Status
+          </button>
         </div>
       </div>
     </div>

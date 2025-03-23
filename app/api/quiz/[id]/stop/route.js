@@ -8,8 +8,8 @@ import { pusher, channelNames, eventNames } from "@/app/lib/pusher";
 
 export async function POST(request, { params }) {
   try {
-    const { id } = params;
-    const quizId = id;
+    const quizId = String(params.id || '');
+    
     const session = await getServerSession(authOptions);
     
     if (!session || !session.user.isAdmin) {
@@ -43,12 +43,27 @@ export async function POST(request, { params }) {
     quiz.endTime = new Date();
     await quiz.save();
     
-    // Trigger Pusher event to notify participants
-    await pusher.trigger(
-      channelNames.quiz(quizId),
-      eventNames.quizStopped,
-      { status: 'finished' }
-    );
+    // Trigger Pusher event to notify participants - send multiple for reliability
+    await Promise.all([
+      // Standard event
+      pusher.trigger(
+        channelNames.quiz(quizId),
+        eventNames.quizStopped,
+        { status: 'finished' }
+      ),
+      // Duplicate event to improve reliability
+      pusher.trigger(
+        `quiz-${quizId}`,  // Direct channel name
+        'quiz-stopped',    // Direct event name
+        { status: 'finished' }
+      ),
+      // Additional event with slightly different name for redundancy
+      pusher.trigger(
+        `quiz-${quizId}`,
+        'quiz-ended',
+        { status: 'finished' }
+      )
+    ]);
     
     return NextResponse.json({
       success: true,

@@ -6,9 +6,8 @@ import Question from "@/app/models/Question";
 
 export async function GET(request, { params }) {
   try {
-    // Access id directly without destructuring
-    const id = params.id;
-    const quizId = String(id || '');
+    // Access id without destructuring
+    const quizId = String(params.id || '');
     
     await connectToDatabase();
     
@@ -24,15 +23,20 @@ export async function GET(request, { params }) {
       );
     }
     
+    // IMPROVED ERROR HANDLING: Return quiz status in error
     if (quiz.status !== 'active') {
       console.log(`Quiz is not active: ${quizId}, status: ${quiz.status}`);
       return NextResponse.json(
-        { success: false, message: `Quiz is in ${quiz.status} status` },
+        { 
+          success: false, 
+          message: `Quiz is in ${quiz.status} status`,
+          quizStatus: quiz.status  // Include actual status in response
+        },
         { status: 400 }
       );
     }
     
-    if (quiz.questions.length === 0) {
+    if (!quiz.questions || quiz.questions.length === 0) {
       console.log(`No questions for quiz: ${quizId}`);
       return NextResponse.json(
         { success: false, message: "No questions available" },

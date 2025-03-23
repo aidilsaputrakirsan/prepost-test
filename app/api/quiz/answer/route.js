@@ -14,10 +14,19 @@ export async function POST(request) {
     // Get participant ID from custom header
     const participantId = request.headers.get('x-participant-id');
     
+    // Debug logs
+    console.log("Answer submission received:", { 
+      quizId, 
+      questionId, 
+      selectedOption, 
+      responseTime,
+      participantId: participantId || 'Not provided'
+    });
+    
     if (!participantId) {
       console.log("No participant ID found in headers");
       return NextResponse.json(
-        { success: false, message: "Not authorized" },
+        { success: false, message: "Not authorized - missing participant ID" },
         { status: 401 }
       );
     }
@@ -43,20 +52,28 @@ export async function POST(request) {
     
     // Check if answer is correct
     const isCorrect = selectedOption === question.correctOption;
+    console.log(`Answer is ${isCorrect ? 'correct' : 'incorrect'}, selected: ${selectedOption}, correct: ${question.correctOption}`);
     
     // Save the answer
-    const answer = await Answer.create({
-      user: participantId,
-      quiz: quizId,
-      question: questionId,
-      selectedOption,
-      isCorrect,
-      responseTime
-    });
+    try {
+      const answer = await Answer.create({
+        user: participantId,
+        quiz: quizId,
+        question: questionId,
+        selectedOption,
+        isCorrect,
+        responseTime
+      });
+      
+      console.log("Answer saved to database:", answer._id);
+    } catch (err) {
+      console.error("Error saving answer:", err);
+      // Continue even if saving fails - we'll still return correct/incorrect
+    }
     
     // Update user score - partial update for immediate feedback
-    if (isCorrect) {
-      try {
+    try {
+      if (isCorrect) {
         const baseScore = 100; // Base score for correct answer
         
         // Speed bonus (faster answer = more points)
@@ -64,17 +81,20 @@ export async function POST(request) {
         const speedBonus = Math.max(0, Math.round(50 * (1 - (responseTime / timeLimit))));
         
         const totalScore = baseScore + speedBonus;
+        console.log(`Updating user ${participantId} score with +${totalScore} points`);
         
         // Update the user's score - increment instead of set
-        await User.findByIdAndUpdate(
+        const updatedUser = await User.findByIdAndUpdate(
           participantId, 
           { $inc: { score: totalScore } },
           { new: true }
         );
-      } catch (err) {
-        console.error("Error updating user score:", err);
-        // Continue even if score update fails
+        
+        console.log(`User score updated, new score: ${updatedUser.score}`);
       }
+    } catch (err) {
+      console.error("Error updating user score:", err);
+      // Continue even if score update fails
     }
     
     // Return result with correct answer for feedback

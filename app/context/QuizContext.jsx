@@ -340,38 +340,17 @@ export const QuizProvider = ({ children }) => {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('quiz_status', 'active');
-        localStorage.setItem('quiz_id', quizId);
         
-        // Instead of immediate redirect, fetch current question first
-        console.log("Waiting for question before redirecting...");
+        // Add a timestamp to prevent stale data
+        localStorage.setItem('quiz_status_updated', Date.now().toString());
         
-        // Fetch current question to ensure it's ready
-        fetch(`/api/quiz/${quizId}/current-question`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.success && data.data) {
-              console.log("Question is ready, redirecting to quiz page");
-              // Update the question in state
-              setCurrentQuestion(data.data);
-              setTimeLeft(data.data.timeLimit);
-              
-              // Navigate to quiz page
-              router.push(`/quiz/${quizId}`);
-            } else {
-              // No question available yet, wait a bit longer
-              console.log("Question not ready yet, waiting...");
-              setTimeout(() => {
-                router.push(`/quiz/${quizId}`);
-              }, 1500);
-            }
-          })
-          .catch(err => {
-            console.error("Error checking question:", err);
-            // Still redirect even if there's an error
-            setTimeout(() => {
-              router.push(`/quiz/${quizId}`);
-            }, 1000);
-          });
+        console.log("Quiz status stored in localStorage:", 'active');
+        
+        // Force redirect to quiz page after short delay
+        setTimeout(() => {
+          console.log("Redirecting to quiz page from event handler");
+          router.push(`/quiz/${quizId}`);
+        }, 500);
       } catch (err) {
         console.error("LocalStorage error:", err);
         // Fallback direct navigation
@@ -379,6 +358,37 @@ export const QuizProvider = ({ children }) => {
       }
     }
   });
+
+  // Enhanced event handler for quizStopped and quizEnded events
+  const handleQuizEnd = (eventName) => (data) => {
+    console.log(`${eventName} event received:`, data);
+    setQuizStatus('finished');
+    
+    // Update localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('quiz_status', 'finished');
+        localStorage.setItem('quiz_status_updated', Date.now().toString());
+        console.log("Quiz status stored in localStorage:", 'finished');
+        
+        // Force redirect to results page
+        setTimeout(() => {
+          console.log("Redirecting to results page from event handler");
+          router.push(`/results/${quizId}`);
+        }, 500);
+      } catch (e) {
+        console.error("Error updating localStorage:", e);
+        // Fallback direct navigation
+        window.location.href = `/results/${quizId}`;
+      }
+    }
+    
+    // Fetch leaderboard data
+    fetchLeaderboard(quizId);
+  };
+
+  useEvent(eventNames.quizStopped, handleQuizEnd('Quiz stopped'));
+  useEvent(eventNames.quizEnded, handleQuizEnd('Quiz ended'));
 
   useEvent(eventNames.quizStopped, (data) => {
     console.log("Quiz stopped event received:", data);

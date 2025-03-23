@@ -9,8 +9,9 @@ import { pusher, channelNames, eventNames, triggerEvent } from "@/app/lib/pusher
 
 export async function POST(request, { params }) {
   try {
-    // Fix: Properly destructure params
-    const { id: quizId } = params;
+    // Fix: Get the ID without destructuring
+    const quizId = String(params.id || '');
+    
     const session = await getServerSession(authOptions);
     
     if (!session || !session.user.isAdmin) {
@@ -67,53 +68,69 @@ export async function POST(request, { params }) {
     
     console.log("Sending quiz data:", quizId);
     
-    // IMPORTANT: Changed order to first send question, then notify about quiz starting
-    // This ensures the question is available before clients navigate to quiz page
+    // IMPORTANT: Changed event sequence to improve reliability
     
-    // First send the question
-    console.log("Sending first question:", safeQuestion);
-    await triggerEvent(
-      channelNames.quiz(quizId),
-      eventNames.questionSent,
-      safeQuestion
-    );
-    
-    // Then send quiz started event (after a short delay)
-    setTimeout(async () => {
-      console.log("Triggering quiz started event");
-      await triggerEvent(
+    // First trigger quiz started event
+    console.log("Triggering quiz started event");
+    await Promise.all([
+      triggerEvent(
         channelNames.quiz(quizId),
         eventNames.quizStarted,
         { status: 'active' }
-      );
-      
-      // Start timer after question and quiz started events are sent
-      setTimeout(async () => {
-        let timeLeft = question.timeLimit;
-        const timerInterval = setInterval(async () => {
-          timeLeft -= 1;
+      ),
+      // Send a duplicate to improve reliability
+      pusher.trigger(
+        `quiz-${quizId}`,  // Ensure correct channel format
+        'quiz-started',    // Ensure correct event name
+        { status: 'active' }
+      )
+    ]);
+    
+    // Short delay to ensure event is processed
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Then send the question data
+    console.log("Sending first question:", safeQuestion);
+    await Promise.all([
+      triggerEvent(
+        channelNames.quiz(quizId),
+        eventNames.questionSent,
+        safeQuestion
+      ),
+      // Send a duplicate to improve reliability
+      pusher.trigger(
+        `quiz-${quizId}`,  // Ensure correct channel format
+        'question-sent',   // Ensure correct event name
+        safeQuestion
+      )
+    ]);
+    
+    // Start timer after events are sent
+    setTimeout(async () => {
+      let timeLeft = question.timeLimit;
+      const timerInterval = setInterval(async () => {
+        timeLeft -= 1;
+        
+        // Send timer update
+        await triggerEvent(
+          channelNames.quiz(quizId),
+          eventNames.timerUpdate,
+          { timeLeft }
+        );
+        
+        // When timer ends
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
           
-          // Send timer update
+          // Let admin know time is up for this question
           await triggerEvent(
-            channelNames.quiz(quizId),
-            eventNames.timerUpdate,
-            { timeLeft }
+            channelNames.admin(quizId),
+            'question-time-up',
+            { questionIndex: 0 }
           );
-          
-          // When timer ends
-          if (timeLeft <= 0) {
-            clearInterval(timerInterval);
-            
-            // Let admin know time is up for this question
-            await triggerEvent(
-              channelNames.admin(quizId),
-              'question-time-up',
-              { questionIndex: 0 }
-            );
-          }
-        }, 1000);
+        }
       }, 1000);
-    }, 500);
+    }, 1000);
     
     return NextResponse.json({
       success: true,

@@ -9,27 +9,49 @@ import { authOptions } from "../../../auth/[...nextauth]/route";
 // Get participants for a quiz
 export async function GET(request, { params }) {
   try {
-    // Properly destructure and handle the quizId parameter
-    const { quizId } = params;
-    const quizIdString = String(quizId || '');
+    // Properly handle the quizId parameter
+    const quizId = String(params.quizId || '');
+    
+    // IMPORTANT: Accept either session auth OR header auth
     const session = await getServerSession(authOptions);
+    const headerParticipantId = request.headers.get('x-participant-id');
+    const headerQuizId = request.headers.get('x-quiz-id');
+    const hasLocalStorage = request.headers.get('x-has-local-storage') === 'true';
     
-    console.log(`Getting participants for quiz: ${quizIdString}, user: ${session?.user?.id}`);
+    console.log(`Getting participants for quiz: ${quizId}`);
+    console.log(`Auth info - session: ${session?.user?.id ? 'Yes' : 'No'}, headers: ${headerParticipantId ? 'Yes' : 'No'}`);
     
-    if (!session) {
-      console.log("No session found, returning 401");
+    // Check if authenticated either via session or headers
+    const isAuthenticated = 
+      // Admin session
+      (session?.user?.isAdmin) || 
+      // Valid participant session for this quiz
+      (session?.user?.id && session?.user?.currentQuiz === quizId) ||
+      // Valid participant header for this quiz
+      (headerParticipantId && headerQuizId === quizId && hasLocalStorage);
+    
+    if (!isAuthenticated) {
+      console.log(`Not authenticated for quiz ${quizId}`);
       return NextResponse.json(
-        { success: false, message: "Not authenticated", data: [] },
+        { 
+          success: false, 
+          message: "Not authenticated",
+          authInfo: {
+            sessionUser: session?.user?.id ? true : false,
+            headerParticipant: headerParticipantId ? true : false,
+            quizMatch: session?.user?.currentQuiz === quizId || headerQuizId === quizId
+          }
+        },
         { status: 401 }
       );
     }
     
     await connectToDatabase();
     
-    const quiz = await QuizState.findById(quizIdString);
+    const quiz = await QuizState.findById(quizId);
     
     if (!quiz) {
-      console.log(`Quiz not found: ${quizIdString}`);
+      console.log(`Quiz not found: ${quizId}`);
       return NextResponse.json(
         { success: false, message: "Quiz not found", data: [] },
         { status: 404 }
@@ -49,7 +71,7 @@ export async function GET(request, { params }) {
     }
     
     const participants = await User.find({ _id: { $in: quiz.participants } })
-      .select('name score')
+      .select('_id name score')
       .exec();
     
     console.log(`Found ${participants.length} participant documents`);
