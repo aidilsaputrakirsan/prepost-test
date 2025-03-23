@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/app/context/AuthContext';
@@ -25,17 +25,7 @@ export default function CreateQuestion() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
-  // Validate admin access
-  useEffect(() => {
-    if (!user || !user.isAdmin) {
-      router.push('/login');
-      return;
-    }
-    
-    fetchQuestions();
-  }, [user, router, quizId, fetchQuestions]);
-  
-  // Fetch existing questions
+  // Define fetchQuestions with useCallback BEFORE using it in useEffect
   const fetchQuestions = useCallback(async () => {
     try {
       setLoading(true);
@@ -55,6 +45,16 @@ export default function CreateQuestion() {
       setLoading(false);
     }
   }, [quizId]);
+  
+  // Validate admin access
+  useEffect(() => {
+    if (!user || !user.isAdmin) {
+      router.push('/login');
+      return;
+    }
+    
+    fetchQuestions();
+  }, [user, router, quizId, fetchQuestions]);
   
   // Handle text input change
   const handleTextChange = (e) => {
