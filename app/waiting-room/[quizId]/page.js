@@ -29,6 +29,7 @@ export default function WaitingRoom() {
   const [localAuthChecked, setLocalAuthChecked] = useState(false);
   const [lastPollTime, setLastPollTime] = useState(0);
   const pollIntervalRef = useRef(null);
+  const [userData, setUserData] = useState(null);
   
   const randomQuotes = [
     "Take a deep breath and prepare for this test!",
@@ -74,24 +75,25 @@ export default function WaitingRoom() {
         // If we have valid data in localStorage matching current quiz, use it
         if (storedUser && storedQuizId === quizId) {
           console.log("Found valid user data in localStorage");
+          const userData = JSON.parse(storedUser);
+          setUserData(userData);
+          
+          // Check if localStorage says we're finished - if so, redirect to results
+          if (storedStatus === 'finished') {
+            console.log("Quiz is finished according to localStorage, redirecting to results page");
+            router.push(`/results/${quizId}`);
+            return;
+          } else if (storedStatus === 'active') {
+            console.log("Quiz is active according to localStorage, redirecting to quiz page");
+            router.push(`/quiz/${quizId}`);
+            return;
+          }
           
           // Make sure we only check once to avoid loops
           if (!localAuthChecked) {
             setLocalAuthChecked(true);
             
-            // If quiz is active according to localStorage, redirect to quiz page
-            if (storedStatus === 'active') {
-              console.log("Quiz is active according to localStorage, redirecting to quiz page");
-              window.location.href = `/quiz/${quizId}`;
-              return;
-            } else if (storedStatus === 'finished') {
-              console.log("Quiz is finished according to localStorage, redirecting to results page");
-              window.location.href = `/results/${quizId}`;
-              return;
-            }
-            
             // Apply auth headers for future requests
-            const userData = JSON.parse(storedUser);
             if (typeof window !== 'undefined') {
               const originalFetch = window.fetch;
               window.fetch = function(url, options = {}) {
@@ -128,128 +130,132 @@ export default function WaitingRoom() {
         return;
       }
     } else {
+      setUserData(user);
       setLocalAuthChecked(true);
     }
   }, [user, router, quizId, localAuthChecked]);
 
+  // Check for quiz status in localStorage to prevent loops
+  useEffect(() => {
+    // Check localStorage first to prevent redirect loops
+    const storedStatus = localStorage.getItem('quiz_status');
+    console.log("Waiting room - Stored quiz status:", storedStatus);
+    
+    // If localStorage says we're finished, redirect to results
+    if (storedStatus === 'finished') {
+      console.log("Quiz marked as finished in localStorage, redirecting to results");
+      router.push(`/results/${quizId}`);
+      return;
+    }
+    
+    // Only redirect for definitive active status
+    if (quizStatus === 'active') {
+      console.log("Quiz status is active, redirecting to quiz page");
+      router.push(`/quiz/${quizId}`);
+      return;
+    }
+    
+  }, [quizStatus, router, quizId]);
+  
   // Join waiting room when authenticated
   useEffect(() => {
-    if (user && connected && !joined && localAuthChecked) {
-      console.log("Joining waiting room with user:", user.name);
+    const effectiveUser = user || userData;
+    if (effectiveUser && connected && !joined && localAuthChecked) {
+      console.log("Joining waiting room with user:", effectiveUser.name);
       joinWaitingRoom(quizId);
       setJoined(true);
       
       // Ensure the user data is in localStorage
       try {
-        localStorage.setItem('quiz_user', JSON.stringify(user));
+        localStorage.setItem('quiz_user', JSON.stringify(effectiveUser));
         localStorage.setItem('quiz_status', 'waiting');
         localStorage.setItem('quiz_id', quizId);
       } catch (e) {
         console.error("Error storing user data:", e);
       }
     }
-  }, [user, quizId, joinWaitingRoom, connected, joined, localAuthChecked]);
+  }, [user, userData, quizId, joinWaitingRoom, connected, joined, localAuthChecked]);
 
-  // Aggressive polling mechanism to check quiz status
-  useEffect(() => {
-    if (!quizId || !localAuthChecked) return;
-    
-    // Start polling
-    const startPolling = () => {
-      console.log("Starting quiz status polling...");
+  // Function to check quiz status
+  const checkQuizStatus = async () => {
+    try {
+      console.log("Polling for quiz status...");
+      setLastPollTime(Date.now());
       
+      const response = await fetch(`/api/quiz/${quizId}`);
+      if (!response.ok) {
+        console.error("Failed to fetch quiz status:", response.status);
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        const currentStatus = data.data.status;
+        console.log(`Polled quiz status: ${currentStatus}`);
+        
+        if (currentStatus === 'active') {
+          console.log("Poll detected active quiz, redirecting...");
+          
+          // Update localStorage
+          localStorage.setItem('quiz_status', 'active');
+          
+          // IMPORTANT: Use direct window location for most reliable redirect
+          window.location.href = `/quiz/${quizId}`;
+        } else if (currentStatus === 'finished') {
+          console.log("Poll detected finished quiz, redirecting...");
+          
+          // Update localStorage
+          localStorage.setItem('quiz_status', 'finished');
+          
+          // IMPORTANT: Use direct window location for most reliable redirect
+          window.location.href = `/results/${quizId}`;
+        }
+      }
+    } catch (err) {
+      console.error("Error polling quiz status:", err);
+    }
+  };
+
+  // Set up polling when joined
+  useEffect(() => {
+    if (!userData || !quizId) return;
+    
+    // Check for quiz status in localStorage to prevent loops
+    const storedStatus = localStorage.getItem('quiz_status');
+    
+    // If localStorage says we're finished or active, redirect accordingly
+    if (storedStatus === 'finished') {
+      router.push(`/results/${quizId}`);
+      return;
+    } else if (storedStatus === 'active') {
+      router.push(`/quiz/${quizId}`);
+      return;
+    }
+    
+    // Only set up regular polling if we're actually waiting
+    if (joined && connected) {
       // Clear any existing interval
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
+      
+      console.log("Setting up quiz status polling...");
       
       // Perform an immediate check
       checkQuizStatus();
       
       // Set up new polling interval (every 2 seconds)
       pollIntervalRef.current = setInterval(checkQuizStatus, 2000);
-    };
-    
-    // Function to check quiz status
-    const checkQuizStatus = async () => {
-      try {
-        console.log("Polling for quiz status...");
-        setLastPollTime(Date.now());
-        
-        const response = await fetch(`/api/quiz/${quizId}`);
-        if (!response.ok) {
-          console.error("Failed to fetch quiz status:", response.status);
-          return;
-        }
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          const currentStatus = data.data.status;
-          console.log(`Polled quiz status: ${currentStatus}`);
-          
-          if (currentStatus === 'active') {
-            console.log("Poll detected active quiz, redirecting...");
-            
-            // Update localStorage
-            localStorage.setItem('quiz_status', 'active');
-            
-            // IMPORTANT: Use direct window location for most reliable redirect
-            window.location.href = `/quiz/${quizId}`;
-          } else if (currentStatus === 'finished') {
-            console.log("Poll detected finished quiz, redirecting...");
-            
-            // Update localStorage
-            localStorage.setItem('quiz_status', 'finished');
-            
-            // IMPORTANT: Use direct window location for most reliable redirect
-            window.location.href = `/results/${quizId}`;
-          }
-        }
-      } catch (err) {
-        console.error("Error polling quiz status:", err);
-      }
-    };
-    
-    startPolling();
+    }
     
     // Clean up on unmount
     return () => {
       if (pollIntervalRef.current) {
-        console.log("Cleaning up quiz status polling");
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [quizId, localAuthChecked]);
-
-  // Redundant check using the Quiz context state (handle Pusher events if they work)
-  useEffect(() => {
-    if (quizStatus === 'active') {
-      console.log("Quiz context detected active quiz, redirecting...");
-      
-      // Store quiz status before redirect
-      try {
-        localStorage.setItem('quiz_status', 'active');
-      } catch (e) {
-        console.error("Error storing quiz status:", e);
-      }
-      
-      // IMPORTANT: Use direct window location for most reliable redirect
-      window.location.href = `/quiz/${quizId}`;
-    } else if (quizStatus === 'finished') {
-      console.log("Quiz context detected finished quiz, redirecting...");
-      
-      // Store quiz status before redirect
-      try {
-        localStorage.setItem('quiz_status', 'finished');
-      } catch (e) {
-        console.error("Error storing quiz status:", e);
-      }
-      
-      // IMPORTANT: Use direct window location for most reliable redirect
-      window.location.href = `/results/${quizId}`;
-    }
-  }, [quizStatus, quizId]);
+  }, [userData, quizId, joined, connected, router]);
 
   // Random quotes
   useEffect(() => {
@@ -325,7 +331,7 @@ export default function WaitingRoom() {
         
         <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg mb-6">
           <div>
-            <p><span className="font-medium">Name:</span> {user?.name}</p>
+            <p><span className="font-medium">Name:</span> {userData?.name || user?.name}</p>
             <p><span className="font-medium">Quiz ID:</span> {quizId}</p>
           </div>
           <button 
@@ -345,27 +351,30 @@ export default function WaitingRoom() {
             </p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-3 bg-gray-50 rounded-lg max-h-64 overflow-y-auto">
-              {participants.map((participant, index) => (
-                <div 
-                  key={participant._id || index} 
-                  className={`p-3 bg-white rounded-md shadow-sm flex items-center ${
-                    user?.id === participant._id ? 'border-2 border-blue-400' : ''
-                  }`}
-                >
+              {participants.map((participant, index) => {
+                const isCurrentUser = (userData?.id === participant._id) || (user?.id === participant._id);
+                return (
                   <div 
-                    className="w-8 h-8 rounded-full mr-2 flex items-center justify-center text-white font-bold"
-                    style={{ backgroundColor: `hsl(${(index * 70) % 360}, 70%, 65%)` }}
+                    key={participant._id || index} 
+                    className={`p-3 bg-white rounded-md shadow-sm flex items-center ${
+                      isCurrentUser ? 'border-2 border-blue-400' : ''
+                    }`}
                   >
-                    {participant.name.charAt(0).toUpperCase()}
+                    <div 
+                      className="w-8 h-8 rounded-full mr-2 flex items-center justify-center text-white font-bold"
+                      style={{ backgroundColor: `hsl(${(index * 70) % 360}, 70%, 65%)` }}
+                    >
+                      {participant.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="truncate">
+                      {participant.name}
+                      {isCurrentUser && (
+                        <span className="text-xs text-blue-500 ml-1">(You)</span>
+                      )}
+                    </span>
                   </div>
-                  <span className="truncate">
-                    {participant.name}
-                    {user?.id === participant._id && (
-                      <span className="text-xs text-blue-500 ml-1">(You)</span>
-                    )}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

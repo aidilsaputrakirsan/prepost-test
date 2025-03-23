@@ -168,18 +168,31 @@ export default function QuizQuestion() {
           setTimeLeft(data.timeLeft);
         });
         
-        // Listen for quiz end
-        channel.bind('quiz-stopped', () => {
-          console.log("Quiz stopped event received");
-          localStorage.setItem('quiz_status', 'finished');
-          window.location.href = `/results/${quizId}`;
-        });
-        
-        channel.bind('quiz-ended', () => {
+        // Event to handle last question being reached
+        const handleQuizEnd = () => {
           console.log("Quiz ended event received");
+          // Store quiz status as finished
           localStorage.setItem('quiz_status', 'finished');
-          window.location.href = `/results/${quizId}`;
-        });
+          
+          // If current question is the last one and already answered, redirect immediately
+          if (currentQuestion && 
+              currentQuestion.questionNumber === currentQuestion.totalQuestions && 
+              hasAnsweredCurrent) {
+            console.log("Last question already answered, redirecting to results");
+            window.location.href = `/results/${quizId}`;
+            return;
+          }
+          
+          // If we're in any other state, redirect after a short delay to ensure
+          // the current answer is saved if the user just answered
+          setTimeout(() => {
+            window.location.href = `/results/${quizId}`;
+          }, 1500);
+        };
+        
+        // Listen for quiz end
+        channel.bind('quiz-stopped', handleQuizEnd);
+        channel.bind('quiz-ended', handleQuizEnd);
         
         // Clean up on unmount
         return () => {
@@ -190,7 +203,7 @@ export default function QuizQuestion() {
     } catch (err) {
       console.error("Error setting up Pusher:", err);
     }
-  }, [userData, quizId, currentQuestion]);
+  }, [userData, quizId, currentQuestion, hasAnsweredCurrent]);
   
   // Set up fallback polling to check for new questions
   useEffect(() => {
@@ -480,6 +493,40 @@ export default function QuizQuestion() {
   // Function to fetch and check for next question
   const fetchNextQuestion = async () => {
     try {
+      // First check if this was the last question
+      if (currentQuestion && currentQuestion.questionNumber === currentQuestion.totalQuestions) {
+        console.log("Last question answered, checking if quiz is finished");
+        
+        // Check quiz status directly
+        const quizResponse = await fetch(`/api/quiz/${quizId}`, {
+          headers: {
+            'x-participant-id': userData.id,
+            'x-quiz-id': quizId,
+            'x-has-local-storage': 'true'
+          }
+        });
+        
+        if (quizResponse.ok) {
+          const quizData = await quizResponse.json();
+          
+          if (quizData.success && quizData.data.status === 'finished') {
+            console.log("Last question answered and quiz is finished, redirecting to results");
+            localStorage.setItem('quiz_status', 'finished');
+            window.location.href = `/results/${quizId}`;
+            return;
+          } else {
+            // Even if not yet marked as finished, wait for admin to end quiz
+            console.log("Last question answered, waiting for quiz to be marked as finished");
+            
+            // Set a bit longer delay for the next check to avoid spamming
+            setTimeout(() => {
+              window.location.href = `/results/${quizId}`;
+            }, 5000);
+            return;
+          }
+        }
+      }
+      
       const response = await fetch(`/api/quiz/${quizId}/current-question`, {
         headers: {
           'x-participant-id': userData.id,
@@ -644,7 +691,11 @@ export default function QuizQuestion() {
           <div className="mt-6">
             <div className="mb-6 bg-blue-50 p-6 border border-blue-100 rounded-lg text-center">
               <h3 className="text-xl font-bold text-blue-800 mb-2">Thank You For Your Answer</h3>
-              <p className="text-blue-600 mb-4">Your answer has been recorded. The page will automatically update when the next question is ready.</p>
+              <p className="text-blue-600 mb-4">
+                {currentQuestion.questionNumber === currentQuestion.totalQuestions 
+                  ? "This was the last question! You'll be redirected to the results page shortly." 
+                  : "Your answer has been recorded. The page will automatically update when the next question is ready."}
+              </p>
               
               <div className={`p-4 rounded-lg text-center mb-4 ${
                 answerResult.isCorrect 
@@ -666,10 +717,25 @@ export default function QuizQuestion() {
               
               <div className="mt-2 p-3 bg-yellow-50 border border-yellow-100 rounded-lg">
                 <p className="text-sm text-yellow-700">
-                  <span className="font-medium">Waiting for next question...</span>
+                  <span className="font-medium">
+                    {currentQuestion.questionNumber === currentQuestion.totalQuestions 
+                      ? "Preparing results..." 
+                      : "Waiting for next question..."}
+                  </span>
                   <span className="inline-block ml-2 w-4 h-4 border-t-2 border-r-2 border-yellow-500 rounded-full animate-spin"></span>
                 </p>
               </div>
+              
+              {currentQuestion.questionNumber === currentQuestion.totalQuestions && (
+                <div className="mt-4">
+                  <button
+                    onClick={() => goToResults()}
+                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-200"
+                  >
+                    View Results Now
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -17,6 +17,8 @@ export default function Leaderboard() {
   
   const router = useRouter();
   const [error, setError] = useState('');
+  const [localUser, setLocalUser] = useState(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Set error from context
   useEffect(() => {
@@ -25,16 +27,101 @@ export default function Leaderboard() {
     }
   }, [quizError]);
 
-  // Redirect if not logged in
+  // Load the user from localStorage if not available from context
   useEffect(() => {
+    const checkLocalStorage = () => {
+      try {
+        // Check if we have the localStorage data for this quiz
+        const storedUser = localStorage.getItem('quiz_user');
+        const storedQuizId = localStorage.getItem('quiz_id');
+        
+        console.log("Checking localStorage for user data");
+        
+        if (storedUser && storedQuizId === quizId) {
+          const userData = JSON.parse(storedUser);
+          console.log("Found user in localStorage:", userData.name);
+          setLocalUser(userData);
+          
+          // If user has no currentQuiz set, update it
+          if (!userData.currentQuiz) {
+            userData.currentQuiz = quizId;
+            localStorage.setItem('quiz_user', JSON.stringify(userData));
+          }
+          
+          // Make sure we have the quiz status set correctly
+          localStorage.setItem('quiz_status', 'finished');
+          
+          // Apply auth headers for future requests
+          if (typeof window !== 'undefined') {
+            const originalFetch = window.fetch;
+            window.fetch = function(url, options = {}) {
+              options = options || {};
+              let headers = {};
+              
+              if (options.headers) {
+                if (options.headers instanceof Headers) {
+                  for (const [key, value] of options.headers.entries()) {
+                    headers[key] = value;
+                  }
+                } else {
+                  headers = { ...options.headers };
+                }
+              }
+              
+              headers['x-participant-id'] = userData.id;
+              headers['x-quiz-id'] = quizId;
+              headers['x-has-local-storage'] = 'true';
+              
+              options.headers = headers;
+              return originalFetch(url, options);
+            };
+          }
+          
+          return true;
+        }
+        
+        return false;
+      } catch (e) {
+        console.error("Error checking localStorage:", e);
+        return false;
+      }
+    };
+    
+    // Check for user in session or localStorage
     if (!user) {
-      router.push(`/join/${quizId}`);
-      return;
+      const hasLocalUser = checkLocalStorage();
+      
+      if (!hasLocalUser) {
+        console.log("No user found in context or localStorage, redirecting to join");
+        router.push(`/join/${quizId}`);
+      }
     }
+    
+    setIsCheckingAuth(false);
   }, [user, router, quizId]);
 
-  if (loading) {
+  if (isCheckingAuth || loading) {
     return <Loading message="Loading leaderboard..." />;
+  }
+
+  // Use the user from either Auth context or localStorage
+  const effectiveUser = user || localUser;
+  
+  if (!effectiveUser) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md text-center">
+          <h2 className="text-2xl font-bold mb-6">Authentication Required</h2>
+          <p className="mb-6">You need to join the quiz to view the leaderboard.</p>
+          <Link
+            href={`/join/${quizId}`}
+            className="px-6 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition duration-200"
+          >
+            Join Quiz
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   // Safety check for undefined or missing data
@@ -71,8 +158,9 @@ export default function Leaderboard() {
               </thead>
               <tbody>
                 {leaderboard.map((entry, index) => {
-                  const isCurrentUser = entry.user && user && entry.user.toString() === user.id.toString() || 
-                                        entry.userId && user && entry.userId.toString() === user.id.toString();
+                  const isCurrentUser = effectiveUser && 
+                    ((entry.user && entry.user.toString() === effectiveUser.id.toString()) ||
+                     (entry.userId && entry.userId.toString() === effectiveUser.id.toString()));
                   
                   return (
                     <tr 
