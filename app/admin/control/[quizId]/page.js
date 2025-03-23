@@ -1,7 +1,7 @@
 // app/(admin)/control/[quizId]/page.js
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/app/context/AuthContext';
@@ -26,17 +26,7 @@ export default function QuizControl() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
-  // Validate admin access
-  useEffect(() => {
-    if (!user || !user.isAdmin) {
-      router.push('/login');
-      return;
-    }
-    
-    fetchQuizData();
-  }, [user, router, quizId, fetchQuizData]);
-  
-  // Fetch quiz data
+  // Define fetchQuizData with useCallback BEFORE using it in useEffect
   const fetchQuizData = useCallback(async () => {
     try {
       setLoading(true);
@@ -76,6 +66,16 @@ export default function QuizControl() {
       setLoading(false);
     }
   }, [quizId]);
+  
+  // Validate admin access
+  useEffect(() => {
+    if (!user || !user.isAdmin) {
+      router.push('/login');
+      return;
+    }
+    
+    fetchQuizData();
+  }, [user, router, quizId, fetchQuizData]);
   
   // Start quiz
   const handleStartQuiz = async () => {
