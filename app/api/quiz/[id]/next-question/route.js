@@ -1,8 +1,9 @@
-// app/api/quiz/[id]/next-question/route.js
+// app/api/quiz/[id]/next-question/route.js - Perbaikan untuk pertanyaan yang tidak dijawab
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/lib/db";
 import QuizState from "@/app/models/QuizState";
 import Question from "@/app/models/Question";
+import Answer from "@/app/models/Answer"; // Tambahkan import Answer
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { pusher, channelNames, eventNames } from "@/app/lib/pusher";
@@ -36,6 +37,54 @@ const clearExistingTimer = (quizId) => {
   }
 };
 
+// BARU: Fungsi untuk membuat jawaban otomatis bagi peserta yang tidak menjawab
+async function createMissingAnswers(quizId, questionId, timeLimit) {
+  try {
+    console.log(`Creating default answers for participants who didn't answer question ${questionId}`);
+    
+    // Dapatkan semua peserta quiz
+    const quiz = await QuizState.findById(quizId);
+    if (!quiz || !quiz.participants) return;
+    
+    // Dapatkan peserta yang sudah menjawab
+    const submittedAnswers = await Answer.find({
+      quiz: quizId,
+      question: questionId
+    });
+    
+    // Buat Set dari ID peserta yang sudah menjawab
+    const answeredParticipants = new Set();
+    submittedAnswers.forEach(answer => {
+      answeredParticipants.add(answer.user.toString());
+    });
+    
+    // Temukan peserta yang belum menjawab
+    const missingParticipants = quiz.participants.filter(
+      participantId => !answeredParticipants.has(participantId.toString())
+    );
+    
+    console.log(`Found ${missingParticipants.length} participants who didn't answer`);
+    
+    // Buat jawaban default untuk peserta yang tidak menjawab
+    if (missingParticipants.length > 0) {
+      const defaultAnswers = missingParticipants.map(participantId => ({
+        user: participantId,
+        quiz: quizId,
+        question: questionId,
+        selectedOption: -1, // -1 menandakan tidak ada jawaban
+        isCorrect: false,
+        responseTime: timeLimit * 1000 // Waktu maksimal
+      }));
+      
+      // Simpan ke database
+      await Answer.insertMany(defaultAnswers);
+      console.log(`Created ${defaultAnswers.length} default answers for missing participants`);
+    }
+  } catch (error) {
+    console.error(`Error creating missing answers:`, error);
+  }
+}
+
 // Function to handle moving to the next question automatically
 export const moveToNextQuestion = async (quizId) => {
   try {
@@ -57,6 +106,19 @@ export const moveToNextQuestion = async (quizId) => {
     
     // Get current index and increment
     const currentIndex = quiz.currentQuestionIndex;
+    
+    // BARU: Pertama, buat jawaban kosong untuk peserta yang belum menjawab
+    if (currentIndex >= 0 && currentIndex < quiz.questions.length) {
+      const currentQuestionId = quiz.questions[currentIndex];
+      
+      // Ambil timeLimit untuk perhitungan response time
+      const currentQuestion = await Question.findById(currentQuestionId);
+      const timeLimit = currentQuestion ? currentQuestion.timeLimit : 15; // Default 15 detik jika tidak ditemukan
+      
+      // Buat jawaban otomatis untuk peserta yang tidak menjawab
+      await createMissingAnswers(quizId, currentQuestionId, timeLimit);
+    }
+    
     const nextIndex = currentIndex + 1;
     
     // Check if we've reached the end of questions
@@ -171,9 +233,8 @@ export const setupAutoAdvancement = (quizId, timeLimit, questionIndex) => {
       timeLeft -= 1;
       
       try {
-        // Kirim timer update dengan delay (untuk mengurangi event duplikat)
-        // Hanya kirim pada detik tertentu (1, 2, 3, 5, 10, 15, 20, 30, etc.)
-        // atau setiap detik jika di bawah 10 detik
+        // Kirim timer update dengan throttling (untuk mengurangi event duplikat)
+        // Hanya kirim pada detik tertentu atau setiap detik jika di bawah 10 detik
         const importantSeconds = [1, 2, 3, 5, 10, 15, 20, 30, 45, 60, 90, 120];
         
         if (timeLeft <= 10 || importantSeconds.includes(timeLeft)) {
@@ -214,25 +275,21 @@ export const setupAutoAdvancement = (quizId, timeLimit, questionIndex) => {
         
         console.log(`Timer expired for quiz ${quizId}, scheduling auto-advancement`);
         
-        // For Vercel, we don't use setTimeout on the server-side since functions may terminate
-        // Instead, we'll rely on client-side auto-advancement triggering our endpoint
-        
-        // However, we'll set up a short delay timer to try auto-advancing if possible
-        // This helps ensure the quiz progresses even if clients fail to trigger advancement
+        // BARU: Segera lanjutkan ke pertanyaan berikutnya setelah delay singkat (3 detik)
         try {
           const delayTimer = setTimeout(async () => {
-            // Check if the quiz can advance
+            // Cek metadata quiz untuk auto-advance
             const metadata = quizMetadata.get(quizId) || {};
             if (metadata.autoAdvance) {
               const success = await moveToNextQuestion(quizId);
-              console.log(`Server-side auto-advancement attempt: ${success ? 'successful' : 'failed'}`);
+              console.log(`Auto-advancement to next question: ${success ? 'successful' : 'failed'}`);
             }
-          }, 5000); // 5 seconds delay after time is up
+          }, 3000); // Setelah 3 detik, lanjutkan ke pertanyaan berikutnya
           
           // Tambahkan timer ID ke array
           timerIds.push(delayTimer);
         } catch (e) {
-          console.error("Error setting up delay timer:", e);
+          console.error("Error scheduling auto advancement:", e);
         }
       }
     }, 1000);

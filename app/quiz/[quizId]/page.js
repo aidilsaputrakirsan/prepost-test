@@ -338,7 +338,10 @@ export default function QuizQuestion() {
   };
   
   // Handler for time up event
+  // Handler for time up event
   const handleTimeUp = () => {
+    console.log("Handling time up event");
+    
     // Clear timer interval
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
@@ -349,12 +352,74 @@ export default function QuizQuestion() {
     lastTimerValueRef.current = 0;
     setTimeLeft(0);
     
-    // If already answered, do nothing more
-    if (hasAnsweredCurrent) return;
+    // If user sudah menjawab, tidak perlu lakukan apa-apa
+    if (hasAnsweredCurrent) {
+      console.log("User already answered, waiting for next question");
+      return;
+    }
     
-    // If an option is selected but not submitted, auto-submit
-    if (selectedOption !== null) {
-      handleAnswerSubmit();
+    // Jika waktu habis dan belum menjawab, buat jawaban kosong
+    console.log("Time up without answer, submitting empty answer");
+    
+    // Kirim jawaban kosong/salah dengan selectedOption = -1
+    submitEmptyAnswer();
+  };
+  
+  // Fungsi baru untuk mengirim jawaban kosong
+  const submitEmptyAnswer = async () => {
+    try {
+      if (!currentQuestion || !userData) return;
+      
+      console.log("Submitting empty answer for unanswered question");
+      
+      // Hitung response time (maksimal)
+      const responseTime = currentQuestion.timeLimit * 1000;
+      
+      const response = await fetch('/api/quiz/answer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-participant-id': userData.id,
+          'x-quiz-id': quizId,
+          'x-has-local-storage': 'true'
+        },
+        body: JSON.stringify({
+          quizId,
+          questionId: currentQuestion.id,
+          selectedOption: -1, // -1 menandakan tidak ada jawaban
+          responseTime
+        })
+      });
+      
+      if (!response.ok) {
+        console.error("Failed to submit empty answer:", response.status);
+        return;
+      }
+      
+      console.log("Empty answer submitted successfully");
+      
+      // Tandai pertanyaan sudah dijawab di localStorage agar tidak diulang
+      try {
+        const answeredQuestionsKey = `answered_questions_${quizId}`;
+        const answeredQuestions = JSON.parse(localStorage.getItem(answeredQuestionsKey) || '[]');
+        
+        if (!answeredQuestions.includes(currentQuestion.id)) {
+          answeredQuestions.push(currentQuestion.id);
+          localStorage.setItem(answeredQuestionsKey, JSON.stringify(answeredQuestions));
+        }
+      } catch (e) {
+        console.error("Error updating answered questions:", e);
+      }
+      
+      // Update UI state
+      setHasAnsweredCurrent(true);
+      setAnswerResult({
+        isCorrect: false,
+        selectedOption: -1,
+        correctOption: null // Kita tidak tahu option yang benar
+      });
+    } catch (err) {
+      console.error("Error submitting empty answer:", err);
     }
   };
   
