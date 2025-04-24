@@ -16,10 +16,23 @@ const quizMetadata = new Map();
 // Function to clear any existing timer for a quiz
 const clearExistingTimer = (quizId) => {
   if (activeTimers.has(quizId)) {
-    const timerId = activeTimers.get(quizId);
-    clearTimeout(timerId);
+    // Bisa berupa interval atau timeout
+    const timerIds = activeTimers.get(quizId);
+    
+    if (Array.isArray(timerIds)) {
+      // Jika array, clear semua timer IDs
+      timerIds.forEach(id => {
+        clearTimeout(id);
+        clearInterval(id);
+      });
+    } else {
+      // Jika single ID, clear timer
+      clearTimeout(timerIds);
+      clearInterval(timerIds);
+    }
+    
     activeTimers.delete(quizId);
-    console.log(`Cleared existing timer for quiz ${quizId}`);
+    console.log(`Cleared existing timer(s) for quiz ${quizId}`);
   }
 };
 
@@ -72,6 +85,8 @@ export const moveToNextQuestion = async (quizId) => {
     
     // Move to next question
     quiz.currentQuestionIndex = nextIndex;
+    // Set start time untuk pertanyaan ini
+    quiz.questionStartTime = new Date();
     await quiz.save();
     
     // Get next question
@@ -91,6 +106,16 @@ export const moveToNextQuestion = async (quizId) => {
       questionNumber: nextIndex + 1,
       totalQuestions: quiz.questions.length
     };
+    
+    // Reset timer dulu dengan initial value sebelum mengirim event pertanyaan baru
+    await pusher.trigger(
+      channelNames.quiz(quizId),
+      eventNames.timerUpdate,
+      { timeLeft: question.timeLimit }
+    );
+    
+    // Delay pengiriman pertanyaan untuk memastikan reset timer telah diterima
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     // Send next question
     await pusher.trigger(
@@ -125,6 +150,9 @@ export const setupAutoAdvancement = (quizId, timeLimit, questionIndex) => {
     // Clear any existing timer
     clearExistingTimer(quizId);
     
+    // Array untuk menyimpan semua timer IDs
+    const timerIds = [];
+    
     // Save quiz metadata
     quizMetadata.set(quizId, {
       currentQuestionIndex: questionIndex,
@@ -143,19 +171,18 @@ export const setupAutoAdvancement = (quizId, timeLimit, questionIndex) => {
       timeLeft -= 1;
       
       try {
-        // Send timer update
-        await pusher.trigger(
-          channelNames.quiz(quizId),
-          eventNames.timerUpdate,
-          { timeLeft }
-        );
+        // Kirim timer update dengan delay (untuk mengurangi event duplikat)
+        // Hanya kirim pada detik tertentu (1, 2, 3, 5, 10, 15, 20, 30, etc.)
+        // atau setiap detik jika di bawah 10 detik
+        const importantSeconds = [1, 2, 3, 5, 10, 15, 20, 30, 45, 60, 90, 120];
         
-        // Also send on the direct channel format for better compatibility
-        await pusher.trigger(
-          `quiz-${quizId}`,
-          'timer-update',
-          { timeLeft }
-        );
+        if (timeLeft <= 10 || importantSeconds.includes(timeLeft)) {
+          await pusher.trigger(
+            channelNames.quiz(quizId),
+            eventNames.timerUpdate,
+            { timeLeft }
+          );
+        }
       } catch (e) {
         console.error("Error sending timer update:", e);
       }
@@ -202,16 +229,17 @@ export const setupAutoAdvancement = (quizId, timeLimit, questionIndex) => {
             }
           }, 5000); // 5 seconds delay after time is up
           
-          // Store the timer so we can clear it if needed
-          activeTimers.set(quizId, delayTimer);
+          // Tambahkan timer ID ke array
+          timerIds.push(delayTimer);
         } catch (e) {
           console.error("Error setting up delay timer:", e);
         }
       }
     }, 1000);
     
-    // Store timer ID so we can clear it if needed
-    activeTimers.set(quizId, timerInterval);
+    // Store timer IDs so we can clear them if needed
+    timerIds.push(timerInterval);
+    activeTimers.set(quizId, timerIds);
     
     return true;
   } catch (error) {

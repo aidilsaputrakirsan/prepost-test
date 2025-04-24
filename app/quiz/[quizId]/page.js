@@ -28,6 +28,10 @@ export default function QuizQuestion() {
   const pusherRef = useRef(null);
   // Reference to track current Pusher channel
   const channelRef = useRef(null);
+  // Reference to track the last received timer value to prevent duplicate updates
+  const lastTimerValueRef = useRef(null);
+  // Track if component is mounted
+  const isMountedRef = useRef(true);
   
   // Load user data once on mount
   useEffect(() => {
@@ -43,8 +47,14 @@ export default function QuizQuestion() {
       setError("Error loading user data. Please refresh.");
     }
     
+    // Set mounted flag
+    isMountedRef.current = true;
+    
     // Cleanup function for component unmount
     return () => {
+      // Set mounted flag to false to prevent state updates after unmount
+      isMountedRef.current = false;
+      
       // Clean up all intervals on unmount
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
@@ -59,15 +69,28 @@ export default function QuizQuestion() {
   const cleanupPusherConnection = () => {
     try {
       if (channelRef.current) {
-        channelRef.current.unbind_all();
+        // Explicitly unbind all tracked event handlers
+        channelRef.current.unbind('timer-update');
+        channelRef.current.unbind('question-sent');
+        channelRef.current.unbind('time-up');
+        channelRef.current.unbind('next-question');
+        channelRef.current.unbind('quiz-stopped');
+        channelRef.current.unbind('quiz-ended');
+        
+        // Reset the channel
+        channelRef.current = null;
       }
       
       if (pusherRef.current) {
-        if (channelRef.current) {
+        if (quizId) {
           pusherRef.current.unsubscribe(`quiz-${quizId}`);
         }
         pusherRef.current.disconnect();
+        pusherRef.current = null;
       }
+      
+      // Reset the timer reference
+      lastTimerValueRef.current = null;
     } catch (e) {
       console.error("Error cleaning up Pusher connection:", e);
     }
@@ -137,10 +160,16 @@ export default function QuizQuestion() {
         console.log("Question response:", data);
         
         if (data.success && data.data) {
-          setCurrentQuestion(data.data);
-          setTimeLeft(data.data.timeLimit);
-          setStartTime(Date.now());
-          setError('');
+          // Only update if the component is still mounted
+          if (isMountedRef.current) {
+            setCurrentQuestion(data.data);
+            setTimeLeft(data.data.timeLimit);
+            setStartTime(Date.now());
+            setError('');
+            
+            // Reset the timer reference with the new question
+            lastTimerValueRef.current = data.data.timeLimit;
+          }
         } else {
           if (data.quizStatus === 'finished') {
             console.log("Quiz is finished, redirecting to results");
@@ -149,13 +178,19 @@ export default function QuizQuestion() {
             return;
           }
           
-          setError(data.message || "Could not load question");
+          if (isMountedRef.current) {
+            setError(data.message || "Could not load question");
+          }
         }
       } catch (err) {
         console.error("Error fetching question:", err);
-        setError("Network error. Please refresh.");
+        if (isMountedRef.current) {
+          setError("Network error. Please refresh.");
+        }
       } finally {
-        setLoading(false);
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
       }
     };
     
@@ -200,25 +235,61 @@ export default function QuizQuestion() {
           // Listen for new questions
           channel.bind('question-sent', (data) => {
             console.log("New question received via Pusher:", data);
-            handleNewQuestion(data);
+            
+            // Only update if component is mounted
+            if (isMountedRef.current) {
+              handleNewQuestion(data);
+            }
           });
           
-          // Listen for timer updates
+          // Listen for timer updates with special handling to prevent duplicates
           channel.bind('timer-update', (data) => {
-            console.log("Timer update received:", data.timeLeft);
-            setTimeLeft(data.timeLeft);
+            // Only process if component is mounted
+            if (!isMountedRef.current) return;
+            
+            const newTimeLeft = data.timeLeft;
+            
+            // Check if this is a duplicate update (same value as last time)
+            // or if the value is wildly different from expected
+            if (lastTimerValueRef.current !== null) {
+              // Skip if exact same value received twice in a row
+              if (newTimeLeft === lastTimerValueRef.current) {
+                return;
+              }
+              
+              // Skip if the timer jumps up unexpectedly (back in time)
+              // Allow only if it's resetting to a full question time after a new question
+              if (newTimeLeft > lastTimerValueRef.current && 
+                  newTimeLeft !== currentQuestion?.timeLimit) {
+                console.log(`Skipping suspicious timer update: ${newTimeLeft} > ${lastTimerValueRef.current}`);
+                return;
+              }
+            }
+            
+            // This is a valid update - update the timer
+            console.log(`Timer update: ${newTimeLeft}`);
+            lastTimerValueRef.current = newTimeLeft;
+            setTimeLeft(newTimeLeft);
           });
           
           // Listen for time-up event
           channel.bind('time-up', (data) => {
             console.log("Time up event received:", data);
-            handleTimeUp();
+            
+            // Only process if component is mounted
+            if (isMountedRef.current) {
+              handleTimeUp();
+            }
           });
           
           // Listen for the next-question event
           channel.bind('next-question', (data) => {
             console.log("Next question event received:", data);
-            fetchCurrentQuestion();
+            
+            // Only process if component is mounted
+            if (isMountedRef.current) {
+              fetchCurrentQuestion();
+            }
           });
           
           // Listen for quiz end events
@@ -235,6 +306,7 @@ export default function QuizQuestion() {
       console.error("Error setting up Pusher:", err);
     }
     
+    // Return cleanup function
     return () => {
       cleanupPusherConnection();
     };
@@ -254,6 +326,9 @@ export default function QuizQuestion() {
       setAnswerResult(null);
       setSelectedOption(null);
       
+      // Reset the timer reference with the new question
+      lastTimerValueRef.current = data.timeLimit;
+      
       // Clear any existing intervals
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
@@ -270,6 +345,8 @@ export default function QuizQuestion() {
       timerIntervalRef.current = null;
     }
     
+    // Reset timer value
+    lastTimerValueRef.current = 0;
     setTimeLeft(0);
     
     // If already answered, do nothing more
@@ -283,6 +360,9 @@ export default function QuizQuestion() {
   
   // Handler for quiz end event
   const handleQuizEnd = () => {
+    // Only process if component is mounted
+    if (!isMountedRef.current) return;
+    
     console.log("Quiz ended event received");
     
     // Store quiz status as finished
@@ -294,6 +374,9 @@ export default function QuizQuestion() {
   
   // Fetch the current question from the API
   const fetchCurrentQuestion = async () => {
+    // Only proceed if component is mounted
+    if (!isMountedRef.current) return;
+    
     try {
       if (!userData) return;
 
@@ -314,6 +397,9 @@ export default function QuizQuestion() {
       
       const data = await response.json();
       
+      // Only process if component is still mounted
+      if (!isMountedRef.current) return;
+      
       if (data.success && data.data) {
         // Check if this is a new question
         if (!currentQuestion || data.data.id !== currentQuestion.id) {
@@ -324,6 +410,9 @@ export default function QuizQuestion() {
             clearInterval(timerIntervalRef.current);
             timerIntervalRef.current = null;
           }
+          
+          // Reset timer reference
+          lastTimerValueRef.current = data.data.timeLimit;
           
           setCurrentQuestion(data.data);
           setTimeLeft(data.data.timeLimit);
@@ -354,6 +443,9 @@ export default function QuizQuestion() {
     
     // Set up polling at a regular interval (every 5 seconds)
     const pollInterval = setInterval(async () => {
+      // Only poll if component is still mounted
+      if (!isMountedRef.current) return;
+      
       try {
         console.log("Polling for quiz status and current question");
         
@@ -365,6 +457,9 @@ export default function QuizQuestion() {
             'x-has-local-storage': 'true'
           }
         });
+        
+        // Only continue if component is mounted
+        if (!isMountedRef.current) return;
         
         if (!quizResponse.ok) {
           console.error("Failed to fetch quiz status");
@@ -407,59 +502,6 @@ export default function QuizQuestion() {
     };
   }, [userData, quizId, currentQuestion]);
   
-  // Timer functionality - SIMPLIFIED TO AVOID CONFLICTS WITH SERVER TIMER
-  useEffect(() => {
-    // Only use local timer as a fallback if server timer isn't working
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null;
-    }
-    
-    // Only start a local timer if we have a question, haven't answered, 
-    // and timeLeft isn't being updated by the server
-    if (currentQuestion && timeLeft > 0 && !hasAnsweredCurrent) {
-      let lastTimeLeftUpdate = Date.now();
-      let localTimeLeft = timeLeft;
-      
-      console.log("Starting local backup timer with", timeLeft, "seconds");
-      
-      timerIntervalRef.current = setInterval(() => {
-        const now = Date.now();
-        
-        // If we haven't received a server update in 3 seconds, use local timer
-        if (now - lastTimeLeftUpdate > 3000) {
-          localTimeLeft -= 1;
-          
-          if (localTimeLeft <= 0) {
-            clearInterval(timerIntervalRef.current);
-            timerIntervalRef.current = null;
-            setTimeLeft(0);
-            
-            // Auto-submit if an option is selected
-            if (selectedOption !== null && !hasAnsweredCurrent) {
-              handleAnswerSubmit();
-            }
-            return;
-          }
-          
-          // Only update UI if server isn't sending updates
-          setTimeLeft(localTimeLeft);
-        } else {
-          // Using server time, just update local tracking var
-          localTimeLeft = timeLeft;
-          lastTimeLeftUpdate = now;
-        }
-      }, 1000);
-    }
-    
-    return () => {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-        timerIntervalRef.current = null;
-      }
-    };
-  }, [currentQuestion, hasAnsweredCurrent, selectedOption, timeLeft]);
-  
   // Check every few seconds if a new question should be shown after answering
   useEffect(() => {
     if (!userData || !quizId) return;
@@ -476,6 +518,9 @@ export default function QuizQuestion() {
       
       // Check every 3 seconds if there's a new question
       const interval = setInterval(async () => {
+        // Only check if component is still mounted
+        if (!isMountedRef.current) return;
+        
         try {
           const response = await fetch(`/api/quiz/${quizId}/current-question`, {
             headers: {
@@ -484,6 +529,9 @@ export default function QuizQuestion() {
               'x-has-local-storage': 'true'
             }
           });
+          
+          // Only continue if component is mounted
+          if (!isMountedRef.current) return;
           
           if (!response.ok) return;
           
@@ -505,6 +553,9 @@ export default function QuizQuestion() {
               // Stop checking for new questions
               clearInterval(questionCheckerIntervalRef.current);
               questionCheckerIntervalRef.current = null;
+              
+              // Reset timer reference for the new question
+              lastTimerValueRef.current = data.data.timeLimit;
               
               // Update the UI with the new question
               setCurrentQuestion(data.data);
@@ -590,6 +641,9 @@ export default function QuizQuestion() {
         });
         
         console.log("Answer submission status:", response.status);
+        
+        // Only continue if component is still mounted
+        if (!isMountedRef.current) return;
         
         if (response.status === 401) {
           console.error("Authentication error when submitting answer");
