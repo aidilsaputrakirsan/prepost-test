@@ -23,7 +23,11 @@ export default function QuizQuestion() {
   const pollIntervalRef = useRef(null);
   const questionCheckerIntervalRef = useRef(null);
   const lastQuestionIdRef = useRef(null);
+  
+  // Reference to track Pusher connection
   const pusherRef = useRef(null);
+  // Reference to track current Pusher channel
+  const channelRef = useRef(null);
   
   // Load user data once on mount
   useEffect(() => {
@@ -38,7 +42,36 @@ export default function QuizQuestion() {
       console.error("Error loading user data:", e);
       setError("Error loading user data. Please refresh.");
     }
+    
+    // Cleanup function for component unmount
+    return () => {
+      // Clean up all intervals on unmount
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      if (questionCheckerIntervalRef.current) clearInterval(questionCheckerIntervalRef.current);
+      
+      // Clean up Pusher connection
+      cleanupPusherConnection();
+    };
   }, []);
+  
+  // Function to clean up Pusher connection
+  const cleanupPusherConnection = () => {
+    try {
+      if (channelRef.current) {
+        channelRef.current.unbind_all();
+      }
+      
+      if (pusherRef.current) {
+        if (channelRef.current) {
+          pusherRef.current.unsubscribe(`quiz-${quizId}`);
+        }
+        pusherRef.current.disconnect();
+      }
+    } catch (e) {
+      console.error("Error cleaning up Pusher connection:", e);
+    }
+  };
   
   // Check if user has already answered the current question
   useEffect(() => {
@@ -135,125 +168,129 @@ export default function QuizQuestion() {
   useEffect(() => {
     if (!userData || !quizId) return;
     
-    // Clean up any existing Pusher connection
-    if (pusherRef.current) {
-      try {
-        const existingChannel = pusherRef.current.channel(`quiz-${quizId}`);
-        if (existingChannel) {
-          existingChannel.unbind_all();
-          pusherRef.current.unsubscribe(`quiz-${quizId}`);
-        }
-      } catch (e) {
-        console.error("Error cleaning up Pusher:", e);
-      }
-    }
+    // Clean up existing Pusher connection first
+    cleanupPusherConnection();
     
-    // Set up Pusher
+    // Set up new Pusher connection
     try {
       const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
       const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
       
       if (window.Pusher && pusherKey) {
+        console.log("Setting up Pusher connection with key:", pusherKey);
+        
+        // Create new Pusher instance
         const pusher = new window.Pusher(pusherKey, {
-          cluster: pusherCluster || 'eu'
+          cluster: pusherCluster || 'eu',
+          forceTLS: true
         });
         
         pusherRef.current = pusher;
-        const channel = pusher.subscribe(`quiz-${quizId}`);
         
-        // Listen for new questions - IMPROVED EVENT HANDLING
-        channel.bind('question-sent', (data) => {
-          console.log("New question received via Pusher:", data);
+        // Subscribe to channel
+        const channelName = `quiz-${quizId}`;
+        console.log("Subscribing to channel:", channelName);
+        const channel = pusher.subscribe(channelName);
+        channelRef.current = channel;
+        
+        // Bind event handlers after successful subscription
+        channel.bind('pusher:subscription_succeeded', () => {
+          console.log("Successfully subscribed to Pusher channel");
           
-          // Check if this is a different question
-          if (!currentQuestion || data.id !== currentQuestion.id) {
-            console.log("Different question detected, updating");
-            
-            // Update question data
-            setCurrentQuestion(data);
-            setTimeLeft(data.timeLimit);
-            setStartTime(Date.now());
-            setHasAnsweredCurrent(false);
-            setAnswerResult(null);
-            setSelectedOption(null);
-            
-            // Clear any existing intervals
-            if (timerIntervalRef.current) {
-              clearInterval(timerIntervalRef.current);
-              timerIntervalRef.current = null;
-            }
-          }
-        });
-        
-        // Listen for timer updates
-        channel.bind('timer-update', (data) => {
-          setTimeLeft(data.timeLeft);
-        });
-        
-        // Listen for time-up event (specific for Vercel compatibility)
-        channel.bind('time-up', async (data) => {
-          console.log("Time up event received:", data);
+          // Listen for new questions
+          channel.bind('question-sent', (data) => {
+            console.log("New question received via Pusher:", data);
+            handleNewQuestion(data);
+          });
           
-          // If we've already answered, help trigger auto-advance
-          if (hasAnsweredCurrent) {
-            console.log("Time up and already answered, helping with auto-advancement");
-            
-            // Instead of trying to trigger auto-advance ourselves, we'll
-            // just prepare for the next question which will come from the server
-            setTimeLeft(0);
-          } else {
-            // If time is up and we haven't answered, just wait for the next question
-            console.log("Time up but haven't answered, waiting for next question");
-            setTimeLeft(0);
-            
-            // Clear interval if it's still running
-            if (timerIntervalRef.current) {
-              clearInterval(timerIntervalRef.current);
-              timerIntervalRef.current = null;
-            }
-          }
-        });
-        
-        // Listen for the next-question event - NEW EVENT
-        channel.bind('next-question', (data) => {
-          console.log("Next question event received:", data);
+          // Listen for timer updates
+          channel.bind('timer-update', (data) => {
+            console.log("Timer update received:", data.timeLeft);
+            setTimeLeft(data.timeLeft);
+          });
           
-          // This is a new, dedicated event for next question
-          if (data && data.questionId && (!currentQuestion || data.questionId !== currentQuestion.id)) {
-            // Refresh the question data
-            console.log("Fetching next question data");
+          // Listen for time-up event
+          channel.bind('time-up', (data) => {
+            console.log("Time up event received:", data);
+            handleTimeUp();
+          });
+          
+          // Listen for the next-question event
+          channel.bind('next-question', (data) => {
+            console.log("Next question event received:", data);
             fetchCurrentQuestion();
-          }
+          });
+          
+          // Listen for quiz end events
+          channel.bind('quiz-stopped', handleQuizEnd);
+          channel.bind('quiz-ended', handleQuizEnd);
         });
         
-        // Event to handle last question being reached
-        const handleQuizEnd = () => {
-          console.log("Quiz ended event received");
-          // Store quiz status as finished
-          localStorage.setItem('quiz_status', 'finished');
-          
-          // Redirect to results page
-          window.location.href = `/results/${quizId}`;
-        };
-        
-        // Listen for quiz end
-        channel.bind('quiz-stopped', handleQuizEnd);
-        channel.bind('quiz-ended', handleQuizEnd);
-        
-        // Clean up on unmount
-        return () => {
-          if (channel) {
-            channel.unbind_all();
-          }
-          if (pusher) {
-            pusher.unsubscribe(`quiz-${quizId}`);
-          }
-        };
+        // Handle subscription error
+        channel.bind('pusher:subscription_error', (error) => {
+          console.error("Error subscribing to Pusher channel:", error);
+        });
       }
     } catch (err) {
       console.error("Error setting up Pusher:", err);
     }
-  }, [userData, quizId, currentQuestion, hasAnsweredCurrent]);
+    
+    return () => {
+      cleanupPusherConnection();
+    };
+  }, [userData, quizId]); // Only recreate when user or quizId changes
+  
+  // Handler for new question event
+  const handleNewQuestion = (data) => {
+    // Check if this is a different question
+    if (!currentQuestion || data.id !== currentQuestion.id) {
+      console.log("Different question detected, updating");
+      
+      // Update question data
+      setCurrentQuestion(data);
+      setTimeLeft(data.timeLimit);
+      setStartTime(Date.now());
+      setHasAnsweredCurrent(false);
+      setAnswerResult(null);
+      setSelectedOption(null);
+      
+      // Clear any existing intervals
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    }
+  };
+  
+  // Handler for time up event
+  const handleTimeUp = () => {
+    // Clear timer interval
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    
+    setTimeLeft(0);
+    
+    // If already answered, do nothing more
+    if (hasAnsweredCurrent) return;
+    
+    // If an option is selected but not submitted, auto-submit
+    if (selectedOption !== null) {
+      handleAnswerSubmit();
+    }
+  };
+  
+  // Handler for quiz end event
+  const handleQuizEnd = () => {
+    console.log("Quiz ended event received");
+    
+    // Store quiz status as finished
+    localStorage.setItem('quiz_status', 'finished');
+    
+    // Redirect to results page
+    window.location.href = `/results/${quizId}`;
+  };
   
   // Fetch the current question from the API
   const fetchCurrentQuestion = async () => {
@@ -281,18 +318,19 @@ export default function QuizQuestion() {
         // Check if this is a new question
         if (!currentQuestion || data.data.id !== currentQuestion.id) {
           console.log("New question data received:", data.data);
+          
+          // Reset timer interval if it exists
+          if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+          }
+          
           setCurrentQuestion(data.data);
           setTimeLeft(data.data.timeLimit);
           setStartTime(Date.now());
           setHasAnsweredCurrent(false);
           setAnswerResult(null);
           setSelectedOption(null);
-          
-          // Clear any existing intervals
-          if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-            timerIntervalRef.current = null;
-          }
         }
       } else if (data.quizStatus === 'finished') {
         // If quiz is finished, redirect to results
@@ -344,13 +382,12 @@ export default function QuizQuestion() {
             return;
           }
           
-          // If active, check current question
-          if (quizData.data.status === 'active') {
-            // Check if we need current question data
-            if (!currentQuestion || 
-                (quizData.data.currentQuestionIndex !== undefined && 
-                 currentQuestion.questionNumber - 1 !== quizData.data.currentQuestionIndex)) {
-              console.log("Poll detected potential new question, fetching...");
+          // If active and we have a currentQuestionIndex, check if we need to update
+          if (quizData.data.status === 'active' && currentQuestion && 
+              quizData.data.currentQuestionIndex !== undefined) {
+            // If the current question index from the server doesn't match what we're showing
+            if (currentQuestion.questionNumber - 1 !== quizData.data.currentQuestionIndex) {
+              console.log("Poll detected question mismatch, fetching new question");
               fetchCurrentQuestion();
             }
           }
@@ -370,39 +407,48 @@ export default function QuizQuestion() {
     };
   }, [userData, quizId, currentQuestion]);
   
-  // Timer functionality
+  // Timer functionality - SIMPLIFIED TO AVOID CONFLICTS WITH SERVER TIMER
   useEffect(() => {
+    // Only use local timer as a fallback if server timer isn't working
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
     
-    // Only start timer if we have a question, haven't answered, and not viewing previous answer
+    // Only start a local timer if we have a question, haven't answered, 
+    // and timeLeft isn't being updated by the server
     if (currentQuestion && timeLeft > 0 && !hasAnsweredCurrent) {
-      console.log("Starting timer with", timeLeft, "seconds");
+      let lastTimeLeftUpdate = Date.now();
+      let localTimeLeft = timeLeft;
+      
+      console.log("Starting local backup timer with", timeLeft, "seconds");
       
       timerIntervalRef.current = setInterval(() => {
-        setTimeLeft(prevTime => {
-          const newTime = prevTime - 1;
+        const now = Date.now();
+        
+        // If we haven't received a server update in 3 seconds, use local timer
+        if (now - lastTimeLeftUpdate > 3000) {
+          localTimeLeft -= 1;
           
-          if (newTime <= 0) {
+          if (localTimeLeft <= 0) {
             clearInterval(timerIntervalRef.current);
             timerIntervalRef.current = null;
+            setTimeLeft(0);
             
             // Auto-submit if an option is selected
-            if (selectedOption !== null) {
+            if (selectedOption !== null && !hasAnsweredCurrent) {
               handleAnswerSubmit();
-            } else {
-              // If time runs out and no answer selected, trigger a check for new question
-              setTimeout(() => {
-                console.log("Time ran out with no answer, checking for new question");
-                fetchCurrentQuestion();
-              }, 2000);
             }
-            return 0;
+            return;
           }
-          return newTime;
-        });
+          
+          // Only update UI if server isn't sending updates
+          setTimeLeft(localTimeLeft);
+        } else {
+          // Using server time, just update local tracking var
+          localTimeLeft = timeLeft;
+          lastTimeLeftUpdate = now;
+        }
       }, 1000);
     }
     
@@ -418,13 +464,14 @@ export default function QuizQuestion() {
   useEffect(() => {
     if (!userData || !quizId) return;
     
+    // Clear any existing checker interval
+    if (questionCheckerIntervalRef.current) {
+      clearInterval(questionCheckerIntervalRef.current);
+      questionCheckerIntervalRef.current = null;
+    }
+    
     // Only set up this checker if user has already answered
     if (hasAnsweredCurrent && answerResult) {
-      // Clear any existing interval
-      if (questionCheckerIntervalRef.current) {
-        clearInterval(questionCheckerIntervalRef.current);
-      }
-      
       console.log("Setting up post-answer question checker");
       
       // Check every 3 seconds if there's a new question
@@ -454,6 +501,12 @@ export default function QuizQuestion() {
           if (data.success && data.data && lastQuestionIdRef.current) {
             if (data.data.id !== lastQuestionIdRef.current) {
               console.log("New question detected after answering, updating UI");
+              
+              // Stop checking for new questions
+              clearInterval(questionCheckerIntervalRef.current);
+              questionCheckerIntervalRef.current = null;
+              
+              // Update the UI with the new question
               setCurrentQuestion(data.data);
               setTimeLeft(data.data.timeLimit);
               setStartTime(Date.now());
@@ -475,6 +528,7 @@ export default function QuizQuestion() {
       return () => {
         if (questionCheckerIntervalRef.current) {
           clearInterval(questionCheckerIntervalRef.current);
+          questionCheckerIntervalRef.current = null;
         }
       };
     }
@@ -568,7 +622,7 @@ export default function QuizQuestion() {
           setHasAnsweredCurrent(true);
           setAnswerResult(data.data);
           
-          // IMPROVED: Try to trigger auto-advance for other participants
+          // Trigger auto-advance check
           triggerAutoAdvanceCheck();
         } else {
           setError(data.message || "Failed to submit answer");
@@ -580,10 +634,10 @@ export default function QuizQuestion() {
     }
   };
   
-  // NEW: Function to trigger auto-advance check
+  // Trigger auto-advance check
   const triggerAutoAdvanceCheck = async () => {
     try {
-      // This endpoint will check if all participants have answered and should move to next question
+      // This endpoint will check if all participants have answered
       const response = await fetch(`/api/quiz/${quizId}/check-all-answered`, {
         method: 'POST',
         headers: {
@@ -597,79 +651,17 @@ export default function QuizQuestion() {
         })
       });
       
-      // Note: we don't need to handle the response here, as the server will
-      // broadcast to all clients if it decides to advance to the next question
-      console.log("Auto-advance check triggered:", response.status);
+      if (!response.ok) {
+        console.error("Failed to trigger auto-advance check:", response.status);
+        return;
+      }
+      
+      console.log("Auto-advance check triggered");
+      
+      // No need to process the response - server will handle auto-advance
     } catch (err) {
       console.error("Error triggering auto-advance check:", err);
     }
-  };
-  
-  // Function to fetch and check for next question
-  const fetchNextQuestion = async () => {
-    try {
-      // First check if this was the last question
-      if (currentQuestion && currentQuestion.questionNumber === currentQuestion.totalQuestions) {
-        console.log("Last question answered, checking if quiz is finished");
-        
-        // Check quiz status directly
-        const quizResponse = await fetch(`/api/quiz/${quizId}`, {
-          headers: {
-            'x-participant-id': userData.id,
-            'x-quiz-id': quizId,
-            'x-has-local-storage': 'true'
-          }
-        });
-        
-        if (quizResponse.ok) {
-          const quizData = await quizResponse.json();
-          
-          if (quizData.success && quizData.data.status === 'finished') {
-            console.log("Last question answered and quiz is finished, redirecting to results");
-            localStorage.setItem('quiz_status', 'finished');
-            window.location.href = `/results/${quizId}`;
-            return;
-          } else {
-            // Even if not yet marked as finished, wait for admin to end quiz
-            console.log("Last question answered, waiting for quiz to be marked as finished");
-            
-            // Set a bit longer delay for the next check to avoid spamming
-            setTimeout(() => {
-              window.location.href = `/results/${quizId}`;
-            }, 5000);
-            return;
-          }
-        }
-      }
-      
-      fetchCurrentQuestion();
-    } catch (err) {
-      console.error("Error checking for next question:", err);
-    }
-  };
-  
-  // Option style based on selection/answer
-  const getOptionStyle = (index) => {
-    // Base styles
-    let styles = "p-4 border-2 rounded-lg flex items-center transition duration-200 mb-3 cursor-pointer";
-    
-    // If answer result received
-    if (answerResult) {
-      if (index === answerResult.correctOption) {
-        return `${styles} border-green-500 bg-green-50 text-green-800`;
-      }
-      
-      if (answerResult.selectedOption === index && !answerResult.isCorrect) {
-        return `${styles} border-red-500 bg-red-50 text-red-800`;
-      }
-      
-      return `${styles} border-gray-200 bg-white text-gray-500`;
-    }
-    
-    // If option is selected but not submitted
-    return selectedOption === index 
-      ? `${styles} border-blue-500 bg-blue-50 hover:bg-blue-100` 
-      : `${styles} border-gray-200 bg-white hover:bg-gray-50`;
   };
   
   // Go to results page

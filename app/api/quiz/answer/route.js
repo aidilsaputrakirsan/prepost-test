@@ -4,6 +4,8 @@ import { connectToDatabase } from "@/app/lib/db";
 import Answer from "@/app/models/Answer";
 import Question from "@/app/models/Question";
 import User from "@/app/models/User";
+import QuizState from "@/app/models/QuizState";
+import { pusher, channelNames } from "@/app/lib/pusher";
 
 export async function POST(request) {
   try {
@@ -54,16 +56,43 @@ export async function POST(request) {
     const isCorrect = selectedOption === question.correctOption;
     console.log(`Answer is ${isCorrect ? 'correct' : 'incorrect'}, selected: ${selectedOption}, correct: ${question.correctOption}`);
     
+    // Look up quiz to get participant count
+    const quiz = await QuizState.findById(quizId);
+    if (!quiz) {
+      return NextResponse.json(
+        { success: false, message: "Quiz not found" },
+        { status: 404 }
+      );
+    }
+    
+    const participantCount = quiz.participants?.length || 0;
+    
     // Save the answer
+    let answer;
     try {
-      const answer = await Answer.create({
+      // Check if this participant already answered this question
+      const existingAnswer = await Answer.findOne({
         user: participantId,
         quiz: quizId,
-        question: questionId,
-        selectedOption,
-        isCorrect,
-        responseTime
+        question: questionId
       });
+      
+      if (existingAnswer) {
+        console.log("Participant already answered this question, updating answer");
+        existingAnswer.selectedOption = selectedOption;
+        existingAnswer.isCorrect = isCorrect;
+        existingAnswer.responseTime = responseTime;
+        answer = await existingAnswer.save();
+      } else {
+        answer = await Answer.create({
+          user: participantId,
+          quiz: quizId,
+          question: questionId,
+          selectedOption,
+          isCorrect,
+          responseTime
+        });
+      }
       
       console.log("Answer saved to database:", answer._id);
     } catch (err) {
@@ -95,6 +124,57 @@ export async function POST(request) {
     } catch (err) {
       console.error("Error updating user score:", err);
       // Continue even if score update fails
+    }
+    
+    // Get all answers for this question to see how many have answered
+    const answers = await Answer.find({
+      quiz: quizId,
+      question: questionId
+    });
+    
+    // Count unique participants who have answered
+    const uniqueRespondents = new Set();
+    answers.forEach(answer => {
+      uniqueRespondents.add(answer.user.toString());
+    });
+    
+    const answeredCount = uniqueRespondents.size;
+    
+    // Check if all participants have answered
+    const allAnswered = participantCount > 0 && 
+                        (answeredCount >= participantCount || 
+                        (participantCount > 5 && answeredCount >= Math.ceil(participantCount * 0.9)));
+    
+    // Notify clients about the new answer count
+    try {
+      await pusher.trigger(
+        channelNames.quiz(quizId),
+        'participant-answered',
+        {
+          questionId,
+          answeredCount,
+          participantCount,
+          allAnswered
+        }
+      );
+      
+      // Also send to the admin channel
+      await pusher.trigger(
+        channelNames.admin(quizId),
+        'participant-answered',
+        {
+          questionId,
+          answeredCount,
+          participantCount,
+          allAnswered,
+          participantId
+        }
+      );
+      
+      console.log(`Notified participants and admin about new answer count: ${answeredCount}/${participantCount}`);
+    } catch (err) {
+      console.error("Error triggering Pusher event:", err);
+      // Continue even if notification fails
     }
     
     // Return result with correct answer for feedback

@@ -1,5 +1,5 @@
 // app/hooks/usePusher.js
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { pusherClient, channelNames, eventNames } from '@/app/lib/pusher';
 import { useSession } from 'next-auth/react';
 
@@ -9,9 +9,16 @@ export default function usePusher(quizId) {
   const [channel, setChannel] = useState(null);
   const [adminChannel, setAdminChannel] = useState(null);
   
+  // Use refs to track bound event handlers for better cleanup
+  const boundEventsRef = useRef(new Map());
+  const adminBoundEventsRef = useRef(new Map());
+  
   // Subscribe to channels
   useEffect(() => {
-    if (!quizId) return;
+    if (!quizId) {
+      setConnected(false);
+      return;
+    }
 
     console.log("Subscribing to Pusher channel for quiz:", quizId);
     
@@ -43,9 +50,17 @@ export default function usePusher(quizId) {
       
       // First, unsubscribe if we're already subscribed
       try {
+        // Clear event bindings on existing channel
+        if (channel) {
+          boundEventsRef.current.forEach((callback, eventName) => {
+            channel.unbind(eventName, callback);
+          });
+          boundEventsRef.current.clear();
+        }
+        
         pusherClient.unsubscribe(channelName);
       } catch (e) {
-        // Ignore errors during unsubscribe
+        console.error("Error unsubscribing from channel:", e);
       }
       
       const quizChannel = pusherClient.subscribe(channelName);
@@ -57,6 +72,7 @@ export default function usePusher(quizId) {
       
       quizChannel.bind('pusher:subscription_error', (error) => {
         console.error(`Error subscribing to ${channelName}:`, error);
+        setConnected(false);
       });
       
       setChannel(quizChannel);
@@ -68,25 +84,52 @@ export default function usePusher(quizId) {
         
         // First, unsubscribe if we're already subscribed
         try {
+          // Clear event bindings on existing admin channel
+          if (adminChannel) {
+            adminBoundEventsRef.current.forEach((callback, eventName) => {
+              adminChannel.unbind(eventName, callback);
+            });
+            adminBoundEventsRef.current.clear();
+          }
+          
           pusherClient.unsubscribe(adminChannelName);
         } catch (e) {
-          // Ignore errors during unsubscribe
+          console.error("Error unsubscribing from admin channel:", e);
         }
         
         const adminChan = pusherClient.subscribe(adminChannelName);
         setAdminChannel(adminChan);
+      } else {
+        setAdminChannel(null);
       }
     } catch (error) {
       console.error("Error subscribing to Pusher channels:", error);
+      setConnected(false);
     }
     
+    // Return cleanup function
     return () => {
-      // Unsubscribe on cleanup
       try {
-        pusherClient.unsubscribe(channelNames.quiz(quizId));
-        if (isAdmin) {
+        // Clean up quiz channel
+        if (channel) {
+          boundEventsRef.current.forEach((callback, eventName) => {
+            channel.unbind(eventName, callback);
+          });
+          boundEventsRef.current.clear();
+          pusherClient.unsubscribe(channelNames.quiz(quizId));
+        }
+        
+        // Clean up admin channel
+        if (adminChannel) {
+          adminBoundEventsRef.current.forEach((callback, eventName) => {
+            adminChannel.unbind(eventName, callback);
+          });
+          adminBoundEventsRef.current.clear();
           pusherClient.unsubscribe(channelNames.admin(quizId));
         }
+        
+        setChannel(null);
+        setAdminChannel(null);
         setConnected(false);
       } catch (error) {
         console.error("Error unsubscribing from channels:", error);
@@ -94,20 +137,34 @@ export default function usePusher(quizId) {
     };
   }, [quizId, session]);
   
-  // Function to bind to events
+  // Function to bind to events, with better tracking for cleanup
   const bind = useCallback((eventName, callback) => {
     if (!channel) return () => {};
     
     console.log(`Binding to event '${eventName}' on channel:`, channel.name);
     
+    // Unbind any existing callback for this event 
+    if (boundEventsRef.current.has(eventName)) {
+      const oldCallback = boundEventsRef.current.get(eventName);
+      channel.unbind(eventName, oldCallback);
+    }
+    
+    // Create a wrapped callback that logs the event
     const wrappedCallback = (data) => {
       console.log(`Received event '${eventName}':`, data);
       callback(data);
     };
     
+    // Store the new callback in our ref Map
+    boundEventsRef.current.set(eventName, wrappedCallback);
+    
+    // Bind the new callback
     channel.bind(eventName, wrappedCallback);
+    
+    // Return an unbind function
     return () => {
       channel.unbind(eventName, wrappedCallback);
+      boundEventsRef.current.delete(eventName);
     };
   }, [channel]);
   
@@ -115,13 +172,34 @@ export default function usePusher(quizId) {
   const bindAdmin = useCallback((eventName, callback) => {
     if (!adminChannel) return () => {};
     
-    adminChannel.bind(eventName, callback);
+    console.log(`Binding to admin event '${eventName}' on channel:`, adminChannel.name);
+    
+    // Unbind any existing callback for this event
+    if (adminBoundEventsRef.current.has(eventName)) {
+      const oldCallback = adminBoundEventsRef.current.get(eventName);
+      adminChannel.unbind(eventName, oldCallback);
+    }
+    
+    // Create a wrapped callback that logs the event
+    const wrappedCallback = (data) => {
+      console.log(`Received admin event '${eventName}':`, data);
+      callback(data);
+    };
+    
+    // Store the new callback in our ref Map
+    adminBoundEventsRef.current.set(eventName, wrappedCallback);
+    
+    // Bind the new callback
+    adminChannel.bind(eventName, wrappedCallback);
+    
+    // Return an unbind function
     return () => {
-      adminChannel.unbind(eventName, callback);
+      adminChannel.unbind(eventName, wrappedCallback);
+      adminBoundEventsRef.current.delete(eventName);
     };
   }, [adminChannel]);
   
-  // FIXED: Helper function for subscribing to events with useEffect
+  // Improved helper function for subscribing to events with useEffect
   const useEvent = useCallback((eventName, eventCallback) => {
     useEffect(() => {
       if (!channel) return;
@@ -133,42 +211,52 @@ export default function usePusher(quizId) {
         eventCallback(data);
       };
       
-      // First try to unbind any existing callbacks to prevent duplicates
-      try {
-        channel.unbind(eventName, wrappedCallback);
-      } catch (e) {
-        // Ignore any errors when unbinding
+      // First unbind any existing callbacks to prevent duplicates
+      if (boundEventsRef.current.has(eventName)) {
+        const oldCallback = boundEventsRef.current.get(eventName);
+        channel.unbind(eventName, oldCallback);
       }
       
-      // Now bind the new callback
+      // Store and bind the new callback
+      boundEventsRef.current.set(eventName, wrappedCallback);
       channel.bind(eventName, wrappedCallback);
       
       return () => {
         console.log(`Unbinding event '${eventName}'`);
         channel.unbind(eventName, wrappedCallback);
+        boundEventsRef.current.delete(eventName);
       };
-    }, [eventName]);
+    }, [eventName, channel]);
   }, [channel]);
   
-  // FIXED: Helper function for subscribing to admin events with useEffect
+  // Improved helper function for subscribing to admin events with useEffect
   const useAdminEvent = useCallback((eventName, eventCallback) => {
     useEffect(() => {
       if (!adminChannel) return;
       
-      // First try to unbind any existing callbacks to prevent duplicates
-      try {
-        adminChannel.unbind(eventName);
-      } catch (e) {
-        // Ignore any errors when unbinding
+      console.log(`Setting up admin event listener for '${eventName}'`);
+      
+      const wrappedCallback = (data) => {
+        console.log(`Received admin event '${eventName}':`, data);
+        eventCallback(data);
+      };
+      
+      // First unbind any existing callbacks to prevent duplicates
+      if (adminBoundEventsRef.current.has(eventName)) {
+        const oldCallback = adminBoundEventsRef.current.get(eventName);
+        adminChannel.unbind(eventName, oldCallback);
       }
       
-      // Now bind the new callback
-      adminChannel.bind(eventName, eventCallback);
+      // Store and bind the new callback
+      adminBoundEventsRef.current.set(eventName, wrappedCallback);
+      adminChannel.bind(eventName, wrappedCallback);
       
       return () => {
-        adminChannel.unbind(eventName, eventCallback);
+        console.log(`Unbinding admin event '${eventName}'`);
+        adminChannel.unbind(eventName, wrappedCallback);
+        adminBoundEventsRef.current.delete(eventName);
       };
-    }, [eventName]);
+    }, [eventName, adminChannel]);
   }, [adminChannel]);
   
   return {
