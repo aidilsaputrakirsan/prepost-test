@@ -20,7 +20,9 @@ PrePostTEST adalah platform kuis interaktif modern yang dirancang untuk pendidik
 - **Analisis Hasil**: Wawasan mendetail tentang kinerja kuis
 - **Pertanyaan Multi-format**: Dukungan untuk berbagai jenis pertanyaan (segera hadir)
 - **Timer yang Dapat Disesuaikan**: Tetapkan batas waktu untuk pertanyaan
-- **Otomatisasi Pertanyaan**: Perpindahan otomatis ke pertanyaan berikutnya setelah waktu habis atau setelah semua peserta menjawab
+- **Perpindahan Otomatis**: Dukungan dua mode perpindahan otomatis:
+  - **Mode Berbasis Waktu**: Otomatis pindah ketika timer habis
+  - **Mode Berbasis Partisipasi**: Otomatis pindah ketika semua peserta telah menjawab
 
 ## 🚀 Demo
 
@@ -133,7 +135,8 @@ Buka [http://localhost:3000](http://localhost:3000) untuk melihat aplikasi.
 5. **Mulai dan kontrol kuis**
    - Gunakan panel kontrol untuk memulai kuis ketika siap
    - Pantau peserta secara real-time
-   - Lanjutkan pertanyaan secara manual atau gunakan auto-advance
+   - Pilih mode perpindahan otomatis (berbasis waktu, berbasis partisipasi, atau keduanya)
+   - Pindah pertanyaan secara manual jika diinginkan
 
 6. **Lihat hasil**
    - Akses analitik mendetail setelah kuis selesai
@@ -220,6 +223,8 @@ Aplikasi ini mengekspos beberapa endpoint API:
 - `POST /api/quiz/[id]/stop` - Hentikan kuis (hanya admin)
 - `POST /api/quiz/[id]/next-question` - Pindah ke pertanyaan berikutnya (hanya admin)
 - `POST /api/quiz/[id]/auto-advance` - Pengaturan kemajuan otomatis
+- `POST /api/quiz/[id]/check-all-answered` - Periksa jika semua peserta telah menjawab
+- `GET /api/quiz/[id]/timer-update` - Dapatkan informasi timer terbaru
 
 ### Manajemen Peserta
 - `POST /api/user` - Buat peserta
@@ -229,6 +234,7 @@ Aplikasi ini mengekspos beberapa endpoint API:
 ### Jawaban
 - `POST /api/quiz/answer` - Kirim jawaban untuk pertanyaan
 - `GET /api/quiz/[id]/user-answers` - Dapatkan jawaban pengguna untuk kuis
+- `GET /api/quiz/[id]/answer-count/[questionId]` - Dapatkan jumlah jawaban untuk pertanyaan
 
 ### Papan Peringkat
 - `GET /api/quiz/[id]/leaderboard` - Dapatkan papan peringkat untuk kuis
@@ -273,6 +279,24 @@ npm test
 # atau
 yarn test
 ```
+
+## 🔄 Peningkatan Performa
+
+### Optimasi Timer
+
+Untuk mendapatkan performa timer yang lebih baik, terutama pada lingkungan Vercel:
+
+1. **Gunakan timer hybrid client-server**:
+   - Timer berbasis server melalui Pusher untuk akurasi
+   - Timer berbasis klien sebagai fallback untuk responsivitas UI
+
+2. **Optimasi Pusher**:
+   - Pertimbangkan upgrade ke paket Pusher berbayar untuk throughput lebih baik
+   - Batasi frekuensi update timer (hanya kirim di detik-detik tertentu)
+
+3. **Versi Berbayar Vercel**:
+   - Untuk aplikasi produksi, pertimbangkan upgrade ke paket Vercel Pro
+   - Fungsi serverless pada paket Pro memiliki cold-start time yang lebih baik
 
 ## 🔄 Roadmap
 
