@@ -139,150 +139,158 @@ export default function AdminPanel() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="bg-white p-6 rounded-lg shadow-md">
+      <div className="bg-card p-6 rounded-xl shadow-md border border-gray-700">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-          <h2 className="text-2xl font-bold mb-4 md:mb-0">Admin Panel</h2>
+          <h2 className="text-2xl font-bold mb-4 md:mb-0 bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+            Panel Admin
+          </h2>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <p>Welcome, {user?.name || "Admin"}</p>
+            <p className="text-gray-300">Selamat datang, {user?.name || "Admin"}</p>
             <button
               onClick={logout}
-              className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition duration-200"
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all duration-200"
             >
-              Logout
+              Keluar
             </button>
           </div>
         </div>
         
         {success && (
-          <div className="mb-6 p-3 bg-green-100 text-green-700 rounded">
+          <div className="mb-6 p-3 bg-green-900/20 text-green-400 rounded-lg border border-green-900/40 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
             {success}
           </div>
         )}
         
         {error && (
-          <div className="mb-6 p-3 bg-red-100 text-red-700 rounded">
+          <div className="mb-6 p-3 bg-red-900/20 text-red-400 rounded-lg border border-red-900/40 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
             {error}
           </div>
         )}
         
         <div className="mb-8">
           {showCustomId ? (
-            <div className="mb-4">
+            <div className="mb-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
               <input
                 type="text"
                 value={customQuizId}
                 onChange={(e) => setCustomQuizId(e.target.value)}
-                placeholder="Enter quiz ID (optional)"
-                className="w-full sm:w-auto px-4 py-2 mb-2 sm:mb-0 mr-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Masukkan ID kuis (opsional)"
+                className="input mb-3 w-full sm:w-auto"
               />
               <div className="flex gap-2">
                 <button
                   onClick={handleCreateQuiz}
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-200 disabled:opacity-50"
+                  className="btn-primary"
                   disabled={loading}
                 >
-                  {loading ? 'Creating...' : 'Create Quiz'}
+                  {loading ? 'Membuat...' : 'Buat Kuis'}
                 </button>
                 <button
                   onClick={() => setShowCustomId(false)}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition duration-200"
+                  className="btn-secondary"
                 >
-                  Cancel
+                  Batal
                 </button>
               </div>
             </div>
           ) : (
             <button
               onClick={() => setShowCustomId(true)}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-200 disabled:opacity-50"
+              className="btn-primary"
               disabled={loading}
             >
-              {loading ? 'Loading...' : 'Create New Quiz'}
+              {loading ? 'Memuat...' : 'Buat Kuis Baru'}
             </button>
           )}
         </div>
         
         <div>
-          <h3 className="text-xl font-semibold mb-4">Your Quizzes</h3>
+          <h3 className="text-xl font-semibold mb-4 text-gray-200">Kuis Anda</h3>
           
           {loading && quizzes.length === 0 ? (
             <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-              <span className="ml-2">Loading quizzes...</span>
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
+              <span className="ml-2 text-gray-300">Memuat kuis...</span>
             </div>
           ) : quizzes.length === 0 ? (
-            <p className="text-gray-600 py-4">No quizzes yet. Create a new quiz to get started.</p>
+            <p className="text-gray-400 py-4 text-center bg-gray-800 rounded-lg border border-gray-700">Belum ada kuis. Buat kuis baru untuk memulai.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-800">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Quiz ID</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Created</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Status</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Participants</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Actions</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-300 border-b border-gray-700">ID Kuis</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-300 border-b border-gray-700">Dibuat</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-300 border-b border-gray-700">Status</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-300 border-b border-gray-700">Peserta</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-300 border-b border-gray-700">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-700">
                   {quizzes.map((quiz) => (
-                    <tr key={quiz._id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 whitespace-nowrap">{quiz._id}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                    <tr key={quiz._id} className="hover:bg-gray-700 transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-200">{quiz._id}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-300">
                         {new Date(quiz.createdAt).toLocaleString()}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
+                        <span className={`inline-flex px-2 py-1 text-xs rounded-full font-medium ${
                           quiz.status === 'waiting' 
-                            ? 'bg-yellow-100 text-yellow-700' 
+                            ? 'bg-yellow-900/30 text-yellow-400' 
                             : quiz.status === 'active'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-700'
+                            ? 'bg-green-900/30 text-green-400'
+                            : 'bg-gray-800 text-gray-300'
                         }`}>
                           {quiz.status === 'waiting'
-                            ? 'Waiting'
+                            ? 'Menunggu'
                             : quiz.status === 'active'
-                            ? 'Active'
-                            : 'Finished'}
+                            ? 'Aktif'
+                            : 'Selesai'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-300">
                         {quiz.participantCount || 0}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex flex-wrap gap-2">
                           <Link
                             href={`/admin/create-question/${quiz._id}`}
-                            className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition duration-200"
+                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
                           >
-                            Questions
+                            Pertanyaan
                           </Link>
                           <Link
                             href={`/admin/participants/${quiz._id}`}
-                            className="px-3 py-1 bg-indigo-500 text-white text-sm rounded hover:bg-indigo-600 transition duration-200"
+                            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-colors"
                           >
-                            Participants
+                            Peserta
                           </Link>
                           <Link
                             href={`/admin/control/${quiz._id}`}
-                            className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition duration-200"
+                            className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors"
                           >
-                            Control
+                            Kontrol
                           </Link>
                           {quiz.status === 'finished' && (
                             <Link
                               href={`/admin/leaderboard/${quiz._id}`}
-                              className="px-3 py-1 bg-purple-500 text-white text-sm rounded hover:bg-purple-600 transition duration-200"
+                              className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-colors"
                             >
-                              Results
+                              Hasil
                             </Link>
                           )}
                           <button
                             onClick={() => handleDeleteQuiz(quiz._id)}
-                            className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition duration-200"
+                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors"
                             disabled={deleteLoading}
                           >
-                            Delete
+                            Hapus
                           </button>
                         </div>
                       </td>

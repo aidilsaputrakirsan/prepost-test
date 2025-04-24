@@ -6,83 +6,73 @@ module.exports = {
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  // We'll still use darkMode class for consistency with libraries
   darkMode: 'class',
-  safelist: [
-    // Add frequently used dynamic classes
-    'bg-green-50', 'bg-green-100', 'bg-red-50', 'bg-red-100', 'bg-blue-50', 'bg-blue-100',
-    'text-green-600', 'text-green-700', 'text-green-800',
-    'text-red-600', 'text-red-700', 'text-red-800',
-    'text-blue-600', 'text-blue-700', 'text-blue-800',
-    'border-green-200', 'border-green-300', 'border-green-500',
-    'border-red-200', 'border-red-300', 'border-red-500',
-    'border-blue-200', 'border-blue-300', 'border-blue-500',
-    'hover:bg-green-600', 'hover:bg-red-600', 'hover:bg-blue-600',
-    'dark:bg-gray-900', 'dark:bg-gray-800', 'dark:text-white', 'dark:text-gray-200',
-    'animate-fade-in-down', 'animate-scale-in', 'animate-slide-in-right', 'animate-pulse-subtle'
-  ],
   theme: {
     extend: {
       colors: {
         primary: {
-          DEFAULT: "#3498db",
-          dark: "#2980b9",
+          DEFAULT: "#6366f1", // indigo-500
+          lighter: "#818cf8", // indigo-400
+          darker: "#4f46e5",  // indigo-600
         },
-        secondary: "#2c3e50",
-        success: "#2ecc71",
-        danger: "#e74c3c",
-        warning: "#f39c12",
-        info: "#3498db",
-        light: "#ecf0f1",
-        dark: "#2c3e50",
-        gray: {
-          750: '#2D3748', // Custom gray between 700 and 800 for dark mode
-        }
+        background: {
+          DEFAULT: "#1f2937", // gray-800
+          lighter: "#374151", // gray-700
+          darker: "#111827",  // gray-900
+        },
+        card: {
+          DEFAULT: "#1e293b", // gray-800/slate-800
+          lighter: "#334155", // slate-700
+          darker: "#0f172a",  // slate-900
+        },
+        text: {
+          DEFAULT: "#f3f4f6", // gray-100
+          muted: "#9ca3af",   // gray-400
+          dark: "#1f2937",    // gray-800 (for any light text on dark bg)
+        },
+        success: "#10b981", // emerald-500
+        danger: "#ef4444",  // red-500
+        warning: "#f59e0b", // amber-500
+        info: "#3b82f6",    // blue-500
       },
       animation: {
-        'fade-in-down': 'fade-in-down 0.3s ease-out forwards',
-        'scale-in': 'scale-in 0.3s ease-out forwards',
-        'slide-in-right': 'slide-in-right 0.3s ease-out forwards',
-        'pulse-subtle': 'pulse-subtle 2s infinite',
-        'shake': 'shake 0.5s ease-in-out',
+        'fade-in': 'fadeIn 0.5s ease-out forwards',
+        'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
+        'expand-in': 'expandIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'float': 'float 3s ease-in-out infinite',
+        'pulse-subtle': 'blinkPulse 2s infinite',
       },
       keyframes: {
-        'fade-in-down': {
-          '0%': { opacity: '0', transform: 'translateY(-10px)' },
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
-        'scale-in': {
+        fadeInUp: {
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        expandIn: {
           '0%': { opacity: '0', transform: 'scale(0.9)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
         },
-        'slide-in-right': {
-          '0%': { opacity: '0', transform: 'translateX(20px)' },
-          '100%': { opacity: '1', transform: 'translateX(0)' },
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-5px)' },
         },
-        'pulse-subtle': {
-          '0%, 100%': { transform: 'scale(1)' },
-          '50%': { transform: 'scale(1.03)' },
+        blinkPulse: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.6' },
         },
-        'shake': {
-          '0%, 100%': { transform: 'translateX(0)' },
-          '20%, 60%': { transform: 'translateX(-5px)' },
-          '40%, 80%': { transform: 'translateX(5px)' },
-        }
       },
       boxShadow: {
-        'inner-lg': 'inset 0 2px 15px 0 rgba(0, 0, 0, 0.1)',
+        'soft': '0 5px 15px rgba(0, 0, 0, 0.1)',
+        'glow': '0 0 15px rgba(99, 102, 241, 0.3)',
       },
-      borderRadius: {
-        'xl': '1rem',
-        '2xl': '1.5rem',
-      }
     },
   },
   plugins: [
     require('@tailwindcss/forms'),
-    // Uncomment if you install @tailwindcss/typography
-    // require('@tailwindcss/typography'),
+    require('@tailwindcss/typography'),
   ],
-  future: {
-    hoverOnlyWhenSupported: true,
-  }
 }

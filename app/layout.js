@@ -1,4 +1,4 @@
-// app/layout.js - tanpa 'use client'
+// app/layout.js - without 'use client'
 import { Inter } from 'next/font/google';
 import './globals.css';
 import ClientLayout from './ClientLayout';
@@ -12,8 +12,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} flex flex-col min-h-screen bg-gray-100`}>
+    <html lang="en" className="dark">
+      <body className={`${inter.className} flex flex-col min-h-screen bg-background text-text`}>
         <ClientLayout>
           {children}
         </ClientLayout>

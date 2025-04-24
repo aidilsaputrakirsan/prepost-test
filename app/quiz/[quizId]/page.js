@@ -24,60 +24,46 @@ export default function QuizQuestion() {
   const questionCheckerIntervalRef = useRef(null);
   const lastQuestionIdRef = useRef(null);
   
-  // Reference to track Pusher connection
   const pusherRef = useRef(null);
-  // Reference to track current Pusher channel
   const channelRef = useRef(null);
-  // Reference to track the last received timer value to prevent duplicate updates
   const lastTimerValueRef = useRef(null);
-  // Track if component is mounted
   const isMountedRef = useRef(true);
   
-  // Load user data once on mount
+  // Muat data pengguna saat komponen dimuat
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem('quiz_user');
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
         setUserData(parsedUser);
-        console.log("User data loaded:", parsedUser.name);
+        console.log("Data pengguna dimuat:", parsedUser.name);
       }
     } catch (e) {
-      console.error("Error loading user data:", e);
-      setError("Error loading user data. Please refresh.");
+      console.error("Kesalahan memuat data pengguna:", e);
+      setError("Kesalahan memuat data pengguna. Silakan muat ulang.");
     }
     
-    // Set mounted flag
     isMountedRef.current = true;
     
-    // Cleanup function for component unmount
     return () => {
-      // Set mounted flag to false to prevent state updates after unmount
       isMountedRef.current = false;
-      
-      // Clean up all intervals on unmount
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
       if (questionCheckerIntervalRef.current) clearInterval(questionCheckerIntervalRef.current);
-      
-      // Clean up Pusher connection
       cleanupPusherConnection();
     };
   }, []);
   
-  // Function to clean up Pusher connection
+  // Fungsi untuk membersihkan koneksi Pusher
   const cleanupPusherConnection = () => {
     try {
       if (channelRef.current) {
-        // Explicitly unbind all tracked event handlers
         channelRef.current.unbind('timer-update');
         channelRef.current.unbind('question-sent');
         channelRef.current.unbind('time-up');
         channelRef.current.unbind('next-question');
         channelRef.current.unbind('quiz-stopped');
         channelRef.current.unbind('quiz-ended');
-        
-        // Reset the channel
         channelRef.current = null;
       }
       
@@ -89,56 +75,49 @@ export default function QuizQuestion() {
         pusherRef.current = null;
       }
       
-      // Reset the timer reference
       lastTimerValueRef.current = null;
     } catch (e) {
-      console.error("Error cleaning up Pusher connection:", e);
+      console.error("Kesalahan membersihkan koneksi Pusher:", e);
     }
   };
   
-  // Check if user has already answered the current question
+  // Periksa apakah pengguna sudah menjawab pertanyaan saat ini
   useEffect(() => {
     if (!userData || !currentQuestion) return;
     
-    // Check localStorage for answered questions
     try {
       const answeredQuestionsKey = `answered_questions_${quizId}`;
       const answeredQuestions = JSON.parse(localStorage.getItem(answeredQuestionsKey) || '[]');
-      
-      // Check if current question is in the answered list
       const hasAnswered = answeredQuestions.includes(currentQuestion.id);
       
-      console.log(`Checking if question ${currentQuestion.id} was answered:`, hasAnswered);
+      console.log(`Memeriksa apakah pertanyaan ${currentQuestion.id} telah dijawab:`, hasAnswered);
       
       if (hasAnswered) {
         setHasAnsweredCurrent(true);
-        // Try to load previous answer result
         const answerResultKey = `answer_result_${currentQuestion.id}`;
         const savedResult = localStorage.getItem(answerResultKey);
         if (savedResult) {
           setAnswerResult(JSON.parse(savedResult));
         }
       } else {
-        // Reset answer state for new question
         setHasAnsweredCurrent(false);
         setAnswerResult(null);
         setSelectedOption(null);
       }
       
-      // Update last question ID reference
       lastQuestionIdRef.current = currentQuestion.id;
     } catch (e) {
-      console.error("Error checking answered questions:", e);
+      console.error("Kesalahan memeriksa pertanyaan yang dijawab:", e);
     }
   }, [userData, currentQuestion, quizId]);
   
-  // Load current question once
+  // Muat pertanyaan saat ini
   useEffect(() => {
     const fetchQuestion = async () => {
       try {
         if (!userData) return;
         
-        console.log("Fetching current question");
+        console.log("Mengambil pertanyaan saat ini");
         setLoading(true);
         
         const response = await fetch(`/api/quiz/${quizId}/current-question`, {
@@ -150,42 +129,39 @@ export default function QuizQuestion() {
         });
         
         if (response.status === 401) {
-          console.error("Authentication error when fetching question");
-          setError("Authentication error. Please try reloading the page.");
+          console.error("Kesalahan autentikasi saat mengambil pertanyaan");
+          setError("Kesalahan autentikasi. Silakan muat ulang halaman.");
           setLoading(false);
           return;
         }
         
         const data = await response.json();
-        console.log("Question response:", data);
+        console.log("Respon pertanyaan:", data);
         
         if (data.success && data.data) {
-          // Only update if the component is still mounted
           if (isMountedRef.current) {
             setCurrentQuestion(data.data);
             setTimeLeft(data.data.timeLimit);
             setStartTime(Date.now());
             setError('');
-            
-            // Reset the timer reference with the new question
             lastTimerValueRef.current = data.data.timeLimit;
           }
         } else {
-          if (data.quizStatus === 'finished') {
-            console.log("Quiz is finished, redirecting to results");
-            localStorage.setItem('quiz_status', 'finished');
+          if (data.quizStatus === 'selesai') {
+            console.log("Kuis selesai, mengalihkan ke hasil");
+            localStorage.setItem('quiz_status', 'selesai');
             window.location.href = `/results/${quizId}`;
             return;
           }
           
           if (isMountedRef.current) {
-            setError(data.message || "Could not load question");
+            setError(data.message || "Tidak dapat memuat pertanyaan");
           }
         }
       } catch (err) {
-        console.error("Error fetching question:", err);
+        console.error("Kesalahan mengambil pertanyaan:", err);
         if (isMountedRef.current) {
-          setError("Network error. Please refresh.");
+          setError("Kesalahan jaringan. Silakan muat ulang.");
         }
       } finally {
         if (isMountedRef.current) {
@@ -199,22 +175,19 @@ export default function QuizQuestion() {
     }
   }, [quizId, userData]);
   
-  // Set up Pusher event listening
+  // Atur pendengar acara Pusher
   useEffect(() => {
     if (!userData || !quizId) return;
     
-    // Clean up existing Pusher connection first
     cleanupPusherConnection();
     
-    // Set up new Pusher connection
     try {
       const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
       const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
       
       if (window.Pusher && pusherKey) {
-        console.log("Setting up Pusher connection with key:", pusherKey);
+        console.log("Mengatur koneksi Pusher dengan kunci:", pusherKey);
         
-        // Create new Pusher instance
         const pusher = new window.Pusher(pusherKey, {
           cluster: pusherCluster || 'eu',
           forceTLS: true
@@ -222,103 +195,79 @@ export default function QuizQuestion() {
         
         pusherRef.current = pusher;
         
-        // Subscribe to channel
         const channelName = `quiz-${quizId}`;
-        console.log("Subscribing to channel:", channelName);
+        console.log("Berlangganan ke saluran:", channelName);
         const channel = pusher.subscribe(channelName);
         channelRef.current = channel;
         
-        // Bind event handlers after successful subscription
         channel.bind('pusher:subscription_succeeded', () => {
-          console.log("Successfully subscribed to Pusher channel");
+          console.log("Berhasil berlangganan ke saluran Pusher");
           
-          // Listen for new questions
           channel.bind('question-sent', (data) => {
-            console.log("New question received via Pusher:", data);
-            
-            // Only update if component is mounted
+            console.log("Pertanyaan baru diterima melalui Pusher:", data);
             if (isMountedRef.current) {
               handleNewQuestion(data);
             }
           });
           
-          // Listen for timer updates with special handling to prevent duplicates
           channel.bind('timer-update', (data) => {
-            // Only process if component is mounted
             if (!isMountedRef.current) return;
             
             const newTimeLeft = data.timeLeft;
             
-            // Check if this is a duplicate update (same value as last time)
-            // or if the value is wildly different from expected
             if (lastTimerValueRef.current !== null) {
-              // Skip if exact same value received twice in a row
               if (newTimeLeft === lastTimerValueRef.current) {
                 return;
               }
               
-              // Skip if the timer jumps up unexpectedly (back in time)
-              // Allow only if it's resetting to a full question time after a new question
               if (newTimeLeft > lastTimerValueRef.current && 
                   newTimeLeft !== currentQuestion?.timeLimit) {
-                console.log(`Skipping suspicious timer update: ${newTimeLeft} > ${lastTimerValueRef.current}`);
+                console.log(`Melewati pembaruan pengatur waktu yang mencurigakan: ${newTimeLeft} > ${lastTimerValueRef.current}`);
                 return;
               }
             }
             
-            // This is a valid update - update the timer
-            console.log(`Timer update: ${newTimeLeft}`);
+            console.log(`Pembaruan pengatur waktu: ${newTimeLeft}`);
             lastTimerValueRef.current = newTimeLeft;
             setTimeLeft(newTimeLeft);
           });
           
-          // Listen for time-up event
           channel.bind('time-up', (data) => {
-            console.log("Time up event received:", data);
-            
-            // Only process if component is mounted
+            console.log("Acara waktu habis diterima:", data);
             if (isMountedRef.current) {
               handleTimeUp();
             }
           });
           
-          // Listen for the next-question event
           channel.bind('next-question', (data) => {
-            console.log("Next question event received:", data);
-            
-            // Only process if component is mounted
+            console.log("Acara pertanyaan berikutnya diterima:", data);
             if (isMountedRef.current) {
               fetchCurrentQuestion();
             }
           });
           
-          // Listen for quiz end events
           channel.bind('quiz-stopped', handleQuizEnd);
           channel.bind('quiz-ended', handleQuizEnd);
         });
         
-        // Handle subscription error
         channel.bind('pusher:subscription_error', (error) => {
-          console.error("Error subscribing to Pusher channel:", error);
+          console.error("Kesalahan berlangganan ke saluran Pusher:", error);
         });
       }
     } catch (err) {
-      console.error("Error setting up Pusher:", err);
+      console.error("Kesalahan mengatur Pusher:", err);
     }
     
-    // Return cleanup function
     return () => {
       cleanupPusherConnection();
     };
-  }, [userData, quizId]); // Only recreate when user or quizId changes
+  }, [userData, quizId]);
   
-  // Handler for new question event
+  // Penangan untuk pertanyaan baru
   const handleNewQuestion = (data) => {
-    // Check if this is a different question
     if (!currentQuestion || data.id !== currentQuestion.id) {
-      console.log("Different question detected, updating");
+      console.log("Pertanyaan berbeda terdeteksi, memperbarui");
       
-      // Update question data
       setCurrentQuestion(data);
       setTimeLeft(data.timeLimit);
       setStartTime(Date.now());
@@ -326,10 +275,8 @@ export default function QuizQuestion() {
       setAnswerResult(null);
       setSelectedOption(null);
       
-      // Reset the timer reference with the new question
       lastTimerValueRef.current = data.timeLimit;
       
-      // Clear any existing intervals
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
         timerIntervalRef.current = null;
@@ -337,50 +284,41 @@ export default function QuizQuestion() {
     }
   };
   
-  // Handler for time up event
+  // Penangan untuk acara waktu habis
   const handleTimeUp = () => {
-    // Clear timer interval
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
     
-    // Reset timer value
     lastTimerValueRef.current = 0;
     setTimeLeft(0);
     
-    // If already answered, do nothing more
     if (hasAnsweredCurrent) return;
     
-    // If an option is selected but not submitted, auto-submit
     if (selectedOption !== null) {
       handleAnswerSubmit();
     }
   };
   
-  // Handler for quiz end event
+  // Penangan untuk acara akhir kuis
   const handleQuizEnd = () => {
-    // Only process if component is mounted
     if (!isMountedRef.current) return;
     
-    console.log("Quiz ended event received");
+    console.log("Acara kuis selesai diterima");
     
-    // Store quiz status as finished
-    localStorage.setItem('quiz_status', 'finished');
-    
-    // Redirect to results page
+    localStorage.setItem('quiz_status', 'selesai');
     window.location.href = `/results/${quizId}`;
   };
   
-  // Fetch the current question from the API
+  // Ambil pertanyaan saat ini dari API
   const fetchCurrentQuestion = async () => {
-    // Only proceed if component is mounted
     if (!isMountedRef.current) return;
     
     try {
       if (!userData) return;
 
-      console.log("Fetching current question");
+      console.log("Mengambil pertanyaan saat ini");
       
       const response = await fetch(`/api/quiz/${quizId}/current-question`, {
         headers: {
@@ -391,27 +329,23 @@ export default function QuizQuestion() {
       });
       
       if (!response.ok) {
-        console.error("Failed to fetch current question:", response.status);
+        console.error("Gagal mengambil pertanyaan saat ini:", response.status);
         return;
       }
       
       const data = await response.json();
       
-      // Only process if component is still mounted
       if (!isMountedRef.current) return;
       
       if (data.success && data.data) {
-        // Check if this is a new question
         if (!currentQuestion || data.data.id !== currentQuestion.id) {
-          console.log("New question data received:", data.data);
+          console.log("Data pertanyaan baru diterima:", data.data);
           
-          // Reset timer interval if it exists
           if (timerIntervalRef.current) {
             clearInterval(timerIntervalRef.current);
             timerIntervalRef.current = null;
           }
           
-          // Reset timer reference
           lastTimerValueRef.current = data.data.timeLimit;
           
           setCurrentQuestion(data.data);
@@ -421,35 +355,30 @@ export default function QuizQuestion() {
           setAnswerResult(null);
           setSelectedOption(null);
         }
-      } else if (data.quizStatus === 'finished') {
-        // If quiz is finished, redirect to results
-        console.log("Quiz is finished, redirecting to results");
-        localStorage.setItem('quiz_status', 'finished');
+      } else if (data.quizStatus === 'selesai') {
+        console.log("Kuis selesai, mengalihkan ke hasil");
+        localStorage.setItem('quiz_status', 'selesai');
         window.location.href = `/results/${quizId}`;
       }
     } catch (err) {
-      console.error("Error fetching current question:", err);
+      console.error("Kesalahan mengambil pertanyaan saat ini:", err);
     }
   };
   
-  // Set up fallback polling to check for new questions
+  // Atur polling cadangan untuk memeriksa pertanyaan baru
   useEffect(() => {
     if (!userData || !quizId) return;
     
-    // Clear any existing interval
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
     }
     
-    // Set up polling at a regular interval (every 5 seconds)
     const pollInterval = setInterval(async () => {
-      // Only poll if component is still mounted
       if (!isMountedRef.current) return;
       
       try {
-        console.log("Polling for quiz status and current question");
+        console.log("Polling untuk status kuis dan pertanyaan saat ini");
         
-        // First check the quiz status
         const quizResponse = await fetch(`/api/quiz/${quizId}`, {
           headers: {
             'x-participant-id': userData.id,
@@ -458,43 +387,38 @@ export default function QuizQuestion() {
           }
         });
         
-        // Only continue if component is mounted
         if (!isMountedRef.current) return;
         
         if (!quizResponse.ok) {
-          console.error("Failed to fetch quiz status");
+          console.error("Gagal mengambil status kuis");
           return;
         }
         
         const quizData = await quizResponse.json();
         
         if (quizData.success) {
-          // Check if quiz is finished
-          if (quizData.data.status === 'finished') {
-            console.log("Poll detected finished quiz, redirecting...");
-            localStorage.setItem('quiz_status', 'finished');
+          if (quizData.data.status === 'selesai') {
+            console.log("Polling mendeteksi kuis selesai, mengalihkan...");
+            localStorage.setItem('quiz_status', 'selesai');
             window.location.href = `/results/${quizId}`;
             return;
           }
           
-          // If active and we have a currentQuestionIndex, check if we need to update
-          if (quizData.data.status === 'active' && currentQuestion && 
+          if (quizData.data.status === 'aktif' && currentQuestion && 
               quizData.data.currentQuestionIndex !== undefined) {
-            // If the current question index from the server doesn't match what we're showing
             if (currentQuestion.questionNumber - 1 !== quizData.data.currentQuestionIndex) {
-              console.log("Poll detected question mismatch, fetching new question");
+              console.log("Polling mendeteksi ketidaksesuaian pertanyaan, mengambil pertanyaan baru");
               fetchCurrentQuestion();
             }
           }
         }
       } catch (err) {
-        console.error("Error during poll:", err);
+        console.error("Kesalahan selama polling:", err);
       }
     }, 5000);
     
     pollIntervalRef.current = pollInterval;
     
-    // Clean up on unmount
     return () => {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
@@ -502,23 +426,19 @@ export default function QuizQuestion() {
     };
   }, [userData, quizId, currentQuestion]);
   
-  // Check every few seconds if a new question should be shown after answering
+  // Periksa setiap beberapa detik apakah pertanyaan baru harus ditampilkan setelah menjawab
   useEffect(() => {
     if (!userData || !quizId) return;
     
-    // Clear any existing checker interval
     if (questionCheckerIntervalRef.current) {
       clearInterval(questionCheckerIntervalRef.current);
       questionCheckerIntervalRef.current = null;
     }
     
-    // Only set up this checker if user has already answered
     if (hasAnsweredCurrent && answerResult) {
-      console.log("Setting up post-answer question checker");
+      console.log("Mengatur pemeriksa pertanyaan setelah jawaban");
       
-      // Check every 3 seconds if there's a new question
       const interval = setInterval(async () => {
-        // Only check if component is still mounted
         if (!isMountedRef.current) return;
         
         try {
@@ -530,34 +450,28 @@ export default function QuizQuestion() {
             }
           });
           
-          // Only continue if component is mounted
           if (!isMountedRef.current) return;
           
           if (!response.ok) return;
           
           const data = await response.json();
           
-          // If quiz is finished, redirect to results
-          if (!data.success && data.quizStatus === 'finished') {
-            console.log("Quiz has finished, redirecting to results");
-            localStorage.setItem('quiz_status', 'finished');
+          if (!data.success && data.quizStatus === 'selesai') {
+            console.log("Kuis telah selesai, mengalihkan ke hasil");
+            localStorage.setItem('quiz_status', 'selesai');
             window.location.href = `/results/${quizId}`;
             return;
           }
           
-          // Check if we have a new question
           if (data.success && data.data && lastQuestionIdRef.current) {
             if (data.data.id !== lastQuestionIdRef.current) {
-              console.log("New question detected after answering, updating UI");
+              console.log("Pertanyaan baru terdeteksi setelah menjawab, memperbarui UI");
               
-              // Stop checking for new questions
               clearInterval(questionCheckerIntervalRef.current);
               questionCheckerIntervalRef.current = null;
               
-              // Reset timer reference for the new question
               lastTimerValueRef.current = data.data.timeLimit;
               
-              // Update the UI with the new question
               setCurrentQuestion(data.data);
               setTimeLeft(data.data.timeLimit);
               setStartTime(Date.now());
@@ -565,12 +479,11 @@ export default function QuizQuestion() {
               setAnswerResult(null);
               setSelectedOption(null);
               
-              // Update last question ID reference
               lastQuestionIdRef.current = data.data.id;
             }
           }
         } catch (err) {
-          console.error("Error checking for new question:", err);
+          console.error("Kesalahan memeriksa pertanyaan baru:", err);
         }
       }, 3000);
       
@@ -585,24 +498,23 @@ export default function QuizQuestion() {
     }
   }, [userData, quizId, hasAnsweredCurrent, answerResult]);
   
-  // Handle option selection
+  // Penanganan pemilihan opsi
   const handleOptionSelect = (index) => {
     if (!hasAnsweredCurrent) {
       setSelectedOption(index);
     }
   };
   
-  // Submit answer
+  // Kirim jawaban
   const handleAnswerSubmit = async () => {
     if (selectedOption === null) {
-      setError('Please select an answer!');
+      setError('Silakan pilih jawaban!');
       setTimeout(() => setError(''), 3000);
       return;
     }
     
     if (!hasAnsweredCurrent && startTime && currentQuestion) {
       try {
-        // Stop timer
         if (timerIntervalRef.current) {
           clearInterval(timerIntervalRef.current);
           timerIntervalRef.current = null;
@@ -610,14 +522,13 @@ export default function QuizQuestion() {
         
         const responseTime = Date.now() - startTime;
         
-        // Validate user data
         if (!userData || !userData.id) {
-          console.error("Missing user data for answer submission");
-          setError("Authentication data missing. Please reload.");
+          console.error("Data pengguna hilang untuk pengiriman jawaban");
+          setError("Data autentikasi hilang. Silakan muat ulang.");
           return;
         }
         
-        console.log("Submitting answer:", {
+        console.log("Mengirim jawaban:", {
           quizId,
           questionId: currentQuestion.id,
           selectedOption,
@@ -640,58 +551,52 @@ export default function QuizQuestion() {
           })
         });
         
-        console.log("Answer submission status:", response.status);
+        console.log("Status pengiriman jawaban:", response.status);
         
-        // Only continue if component is still mounted
         if (!isMountedRef.current) return;
         
         if (response.status === 401) {
-          console.error("Authentication error when submitting answer");
-          setError("Authentication error. Please reload the page.");
+          console.error("Kesalahan autentikasi saat mengirim jawaban");
+          setError("Kesalahan autentikasi. Silakan muat ulang halaman.");
           return;
         }
         
         const data = await response.json();
-        console.log("Answer response:", data);
+        console.log("Respon jawaban:", data);
         
         if (data.success) {
-          // Mark question as answered
           try {
             const answeredQuestionsKey = `answered_questions_${quizId}`;
             const answeredQuestions = JSON.parse(localStorage.getItem(answeredQuestionsKey) || '[]');
             
-            // Add current question to answered list if not already there
             if (!answeredQuestions.includes(currentQuestion.id)) {
               answeredQuestions.push(currentQuestion.id);
               localStorage.setItem(answeredQuestionsKey, JSON.stringify(answeredQuestions));
             }
             
-            // Save answer result
             const answerResultKey = `answer_result_${currentQuestion.id}`;
             localStorage.setItem(answerResultKey, JSON.stringify(data.data));
           } catch (e) {
-            console.error("Error saving answered questions:", e);
+            console.error("Kesalahan menyimpan pertanyaan yang dijawab:", e);
           }
           
           setHasAnsweredCurrent(true);
           setAnswerResult(data.data);
           
-          // Trigger auto-advance check
           triggerAutoAdvanceCheck();
         } else {
-          setError(data.message || "Failed to submit answer");
+          setError(data.message || "Gagal mengirim jawaban");
         }
       } catch (err) {
-        console.error("Error submitting answer:", err);
-        setError("Network error. Please try again.");
+        console.error("Kesalahan mengirim jawaban:", err);
+        setError("Kesalahan jaringan. Silakan coba lagi.");
       }
     }
   };
   
-  // Trigger auto-advance check
+  // Picu pemeriksaan kemajuan otomatis
   const triggerAutoAdvanceCheck = async () => {
     try {
-      // This endpoint will check if all participants have answered
       const response = await fetch(`/api/quiz/${quizId}/check-all-answered`, {
         method: 'POST',
         headers: {
@@ -706,60 +611,60 @@ export default function QuizQuestion() {
       });
       
       if (!response.ok) {
-        console.error("Failed to trigger auto-advance check:", response.status);
+        console.error("Gagal memicu pemeriksaan kemajuan otomatis:", response.status);
         return;
       }
       
-      console.log("Auto-advance check triggered");
-      
-      // No need to process the response - server will handle auto-advance
+      console.log("Pemeriksaan kemajuan otomatis dipicu");
     } catch (err) {
-      console.error("Error triggering auto-advance check:", err);
+      console.error("Kesalahan memicu pemeriksaan kemajuan otomatis:", err);
     }
   };
   
-  // Go to results page
+  // Ke halaman hasil
   const goToResults = () => {
-    localStorage.setItem('quiz_status', 'finished');
+    localStorage.setItem('quiz_status', 'selesai');
     window.location.href = `/results/${quizId}`;
   };
 
-  // Basic loading state
+  // Keadaan pemuatan
   if (loading && !currentQuestion) {
-    return <Loading message="Loading quiz..." />;
+    return <Loading message="Memuat kuis..." />;
   }
   
-  // Error state
+  // Keadaan kesalahan
   if (!currentQuestion || error) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md text-center">
-          <h2 className="text-2xl font-bold mb-4">Quiz Information</h2>
+      <div className="container mx-auto px-4 py-8 bg-gray-800">
+        <div className="max-w-2xl mx-auto bg-card p-6 rounded-2xl shadow-md border border-gray-700">
+          <h2 className="text-2xl font-bold mb-4 text-center bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+            Informasi Kuis
+          </h2>
           
           {error && (
-            <div className="mb-6 p-4 bg-red-100 border-l-4 border-red-500 text-red-700">
-              <p><strong>Error:</strong> {error}</p>
+            <div className="mb-6 p-4 bg-red-900/50 border-l-4 border-red-500 text-red-400">
+              <p><strong>Kesalahan:</strong> {error}</p>
             </div>
           )}
           
           <div className="mt-4 text-center">
-            <p>No question is currently available. The page will automatically refresh when the next question is ready.</p>
-            <p className="text-sm text-gray-500 mt-2">If you don't see a question soon, please wait or check your connection.</p>
+            <p className="text-gray-200">Tidak ada pertanyaan yang tersedia saat ini. Halaman akan otomatis diperbarui saat pertanyaan berikutnya siap.</p>
+            <p className="text-sm text-gray-400 mt-2">Jika Anda tidak melihat pertanyaan dalam waktu dekat, silakan tunggu atau periksa koneksi Anda.</p>
           </div>
           
-          <div className="mt-6">
+          <div className="mt-6 flex justify-center gap-4">
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-200 mx-2"
+              className="px-4 py-2 bg-indigo-500 text-gray-200 rounded-lg font-medium hover:bg-indigo-600 transition duration-200"
             >
-              Refresh Page Manually
+              Muat Ulang Halaman
             </button>
             
             <button
               onClick={goToResults}
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition duration-200 mx-2"
+              className="px-4 py-2 bg-gray-600 text-gray-200 rounded-lg font-medium hover:bg-gray-500 transition duration-200"
             >
-              Go to Results
+              Ke Halaman Hasil
             </button>
           </div>
         </div>
@@ -767,23 +672,25 @@ export default function QuizQuestion() {
     );
   }
 
-  // Question view - changes based on whether user has answered or not
+  // Tampilan pertanyaan
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md">
+    <div className="container mx-auto px-4 py-8 bg-gray-800">
+      <div className="max-w-2xl mx-auto bg-card p-6 rounded-2xl shadow-md border border-gray-700">
         <div className="mb-6">
-          <h3 className="text-xl font-bold mb-2">
-            Question {currentQuestion.questionNumber} of {currentQuestion.totalQuestions}
+          <h3 className="text-xl font-bold mb-2 text-gray-200">
+            Pertanyaan {currentQuestion.questionNumber} dari {currentQuestion.totalQuestions}
           </h3>
           
-          {/* Only show timer if not answered yet */}
           {!hasAnsweredCurrent && (
             <Timer timeLeft={timeLeft} total={currentQuestion.timeLimit} />
           )}
         </div>
         
         {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+          <div className="mb-4 p-3 bg-red-900/50 text-red-400 rounded-lg flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
             {error}
           </div>
         )}
@@ -797,67 +704,54 @@ export default function QuizQuestion() {
           onSelect={handleOptionSelect}
         />
         
-        {/* Show submit button only if not answered yet */}
         {!hasAnsweredCurrent && (
           <button 
             onClick={handleAnswerSubmit}
-            className="w-full py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 bg-indigo-500 hover:bg-indigo-600 text-gray-200 rounded-lg font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={selectedOption === null}
           >
-            Submit Answer
+            Kirim Jawaban
           </button>
         )}
         
-        {/* Thank you message and answer result when answered */}
         {hasAnsweredCurrent && answerResult && (
           <div className="mt-6">
-            <div className="mb-6 bg-blue-50 p-6 border border-blue-100 rounded-lg text-center">
-              <h3 className="text-xl font-bold text-blue-800 mb-2">Thank You For Your Answer</h3>
-              <p className="text-blue-600 mb-4">
+            <div className="mb-6 bg-gray-800 p-6 border border-gray-700 rounded-lg text-center">
+              <h3 className="text-xl font-bold text-indigo-400 mb-2">Terima Kasih Atas Jawaban Anda</h3>
+              <p className="text-gray-400 mb-4">
                 {currentQuestion.questionNumber === currentQuestion.totalQuestions 
-                  ? "This was the last question! You'll be redirected to the results page shortly." 
-                  : "Your answer has been recorded. The page will automatically update when the next question is ready."}
+                  ? "Ini adalah pertanyaan terakhir! Anda akan dialihkan ke halaman hasil sebentar lagi." 
+                  : "Jawaban Anda telah dicatat. Halaman akan otomatis diperbarui ketika pertanyaan berikutnya siap."}
               </p>
               
               <div className={`p-4 rounded-lg text-center mb-4 ${
                 answerResult.isCorrect 
-                  ? 'bg-green-100 text-green-800 border border-green-200' 
-                  : 'bg-red-100 text-red-800 border border-red-200'
+                  ? 'bg-emerald-900/20 text-emerald-400 border border-emerald-900/50' 
+                  : 'bg-red-900/20 text-red-400 border border-red-900/50'
               }`}>
                 <p className="text-lg font-bold mb-1">
                   {answerResult.isCorrect
-                    ? '✓ Correct answer!'
-                    : '✗ Incorrect answer!'}
+                    ? '✓ Jawaban Benar!'
+                    : '✗ Jawaban Salah!'}
                 </p>
                 <p>
-                  The correct answer is: 
+                  Jawaban yang benar adalah: 
                   <strong className="ml-1">
                     {String.fromCharCode(65 + answerResult.correctOption)} - {currentQuestion.options[answerResult.correctOption]}
                   </strong>
                 </p>
               </div>
               
-              <div className="mt-2 p-3 bg-yellow-50 border border-yellow-100 rounded-lg">
-                <p className="text-sm text-yellow-700">
+              <div className="mt-2 p-3 bg-amber-900/20 border border-amber-900/40 rounded-lg">
+                <p className="text-sm text-amber-400">
                   <span className="font-medium">
                     {currentQuestion.questionNumber === currentQuestion.totalQuestions 
-                      ? "Preparing results..." 
-                      : "Waiting for next question..."}
+                      ? "Menyiapkan hasil..." 
+                      : "Menunggu pertanyaan berikutnya..."}
                   </span>
-                  <span className="inline-block ml-2 w-4 h-4 border-t-2 border-r-2 border-yellow-500 rounded-full animate-spin"></span>
+                  <span className="inline-block ml-2 w-4 h-4 border-t-2 border-r-2 border-amber-400 rounded-full animate-spin"></span>
                 </p>
               </div>
-              
-              {currentQuestion.questionNumber === currentQuestion.totalQuestions && (
-                <div className="mt-4">
-                  <button
-                    onClick={() => goToResults()}
-                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-200"
-                  >
-                    View Results Now
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         )}

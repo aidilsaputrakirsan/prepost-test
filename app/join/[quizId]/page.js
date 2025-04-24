@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useAuth } from '@/app/context/AuthContext';
 
 export default function JoinQuiz() {
-  // Use useParams hook to access route parameters client-side
   const params = useParams();
   const quizId = params.quizId;
   
@@ -21,7 +20,7 @@ export default function JoinQuiz() {
     e.preventDefault();
     
     if (!name.trim()) {
-      setError('Name is required');
+      setError('Nama diperlukan');
       return;
     }
 
@@ -34,24 +33,26 @@ export default function JoinQuiz() {
       if (result.success) {
         router.push(`/waiting-room/${quizId}`);
       } else {
-        setError(result.message || 'Failed to join quiz');
+        setError(result.message || 'Gagal bergabung dengan kuis');
       }
     } catch (err) {
-      console.error('Join quiz error:', err);
-      setError('An unexpected error occurred. Please try again.');
+      console.error('Kesalahan bergabung dengan kuis:', err);
+      setError('Terjadi kesalahan tak terduga. Silakan coba lagi.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-6 text-center">Enter Your Name</h2>
-        <p className="text-center text-gray-600 mb-6">To join quiz: {quizId}</p>
+    <div className="container mx-auto px-4 py-8 bg-gray-800">
+      <div className="max-w-md mx-auto bg-card p-8 rounded-lg shadow-md border border-gray-700">
+        <h2 className="text-2xl font-bold mb-6 text-center bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+          Masukkan Nama Anda
+        </h2>
+        <p className="text-center text-gray-400 mb-6">Untuk bergabung dengan kuis: {quizId}</p>
         
         {error && (
-          <div className="mb-6 p-3 bg-red-100 text-red-700 rounded">
+          <div className="mb-6 p-3 bg-red-900/50 text-red-400 rounded">
             {error}
           </div>
         )}
@@ -60,26 +61,26 @@ export default function JoinQuiz() {
           <div className="mb-6">
             <input
               type="text"
-              placeholder="Your Name"
+              placeholder="Nama Anda"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+              className="w-full px-4 py-2 border border-gray-700 bg-gray-800 text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               disabled={loading}
             />
           </div>
           
           <button 
             type="submit" 
-            className="w-full bg-blue-500 text-white py-3 rounded text-lg font-medium hover:bg-blue-600 transition duration-200 disabled:opacity-50"
+            className="w-full bg-indigo-500 text-gray-200 py-3 rounded-lg text-lg font-medium hover:bg-indigo-600 transition duration-200 disabled:opacity-50"
             disabled={loading}
           >
-            {loading ? 'Joining...' : 'Join Quiz'}
+            {loading ? 'Sedang Bergabung...' : 'Gabung Kuis'}
           </button>
         </form>
         
         <div className="mt-6 text-center">
-          <Link href="/" className="text-blue-500 hover:underline">
-            Back to Home
+          <Link href="/" className="text-indigo-400 hover:text-indigo-300 transition duration-200">
+            Kembali ke Beranda
           </Link>
         </div>
       </div>

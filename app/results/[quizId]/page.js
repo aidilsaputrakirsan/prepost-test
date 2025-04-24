@@ -9,7 +9,6 @@ import Loading from '@/app/components/common/Loading';
 import QuestionHistory from '@/app/components/quiz/QuestionHistory';
 
 export default function QuizResults() {
-  // Use useParams hook to access route parameters client-side
   const params = useParams();
   const quizId = params.quizId;
   
@@ -26,38 +25,34 @@ export default function QuizResults() {
   const [localUser, setLocalUser] = useState(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Set error from context
+  // Set error dari konteks
   useEffect(() => {
     if (quizError) {
       setError(quizError);
     }
   }, [quizError]);
 
-  // Load the user from localStorage if not available from context
+  // Muat pengguna dari localStorage jika tidak tersedia dari konteks
   useEffect(() => {
     const checkLocalStorage = () => {
       try {
-        // Check if we have the localStorage data for this quiz
         const storedUser = localStorage.getItem('quiz_user');
         const storedQuizId = localStorage.getItem('quiz_id');
         
-        console.log("Checking localStorage for user data");
+        console.log("Memeriksa localStorage untuk data pengguna");
         
         if (storedUser && storedQuizId === quizId) {
           const userData = JSON.parse(storedUser);
-          console.log("Found user in localStorage:", userData.name);
+          console.log("Pengguna ditemukan di localStorage:", userData.name);
           setLocalUser(userData);
           
-          // If user has no currentQuiz set, update it
           if (!userData.currentQuiz) {
             userData.currentQuiz = quizId;
             localStorage.setItem('quiz_user', JSON.stringify(userData));
           }
           
-          // Make sure we have the quiz status set correctly
-          localStorage.setItem('quiz_status', 'finished');
+          localStorage.setItem('quiz_status', 'selesai');
           
-          // Apply auth headers for future requests
           if (typeof window !== 'undefined') {
             const originalFetch = window.fetch;
             window.fetch = function(url, options = {}) {
@@ -88,17 +83,16 @@ export default function QuizResults() {
         
         return false;
       } catch (e) {
-        console.error("Error checking localStorage:", e);
+        console.error("Kesalahan memeriksa localStorage:", e);
         return false;
       }
     };
-    
-    // Check for user in session or localStorage
+
     if (!user) {
       const hasLocalUser = checkLocalStorage();
       
       if (!hasLocalUser) {
-        console.log("No user found in context or localStorage, redirecting to join");
+        console.log("Tidak ada pengguna di konteks atau localStorage, mengalihkan ke halaman bergabung");
         router.push(`/join/${quizId}`);
       }
     }
@@ -106,38 +100,33 @@ export default function QuizResults() {
     setIsCheckingAuth(false);
   }, [user, router, quizId]);
 
-  // Redirect based on quiz status for authenticated sessions
+  // Alihkan berdasarkan status kuis untuk sesi terautentikasi
   useEffect(() => {
-    // Always prioritize the 'finished' status from localStorage to prevent loops
     const storedStatus = localStorage.getItem('quiz_status');
-    console.log("Results page - Stored quiz status:", storedStatus);
+    console.log("Halaman hasil - Status kuis tersimpan:", storedStatus);
     
-    // If localStorage says we're finished, don't redirect away from results
-    if (storedStatus === 'finished') {
-      console.log("Quiz marked as finished in localStorage, staying on results page");
+    if (storedStatus === 'selesai') {
+      console.log("Kuis ditandai selesai di localStorage, tetap di halaman hasil");
       return;
     }
     
-    // Only redirect if we have definitive information that we're not finished
-    if (user && quizStatus && quizStatus !== 'finished' && quizStatus !== null) {
-      console.log(`Quiz status from context: ${quizStatus}, redirecting accordingly`);
-      if (quizStatus === 'waiting') {
+    if (user && quizStatus && quizStatus !== 'selesai' && quizStatus !== null) {
+      console.log(`Status kuis dari konteks: ${quizStatus}, mengalihkan sesuai kebutuhan`);
+      if (quizStatus === 'menunggu') {
         router.push(`/waiting-room/${quizId}`);
-      } else if (quizStatus === 'active') {
+      } else if (quizStatus === 'aktif') {
         router.push(`/quiz/${quizId}`);
       }
     }
   }, [user, quizStatus, router, quizId]);
 
-  // Process leaderboard data to find user's entry and rank
+  // Proses data papan peringkat untuk menemukan entri dan peringkat pengguna
   useEffect(() => {
     if (leaderboard && leaderboard.length > 0) {
       const effectiveUser = user || localUser;
       
       if (effectiveUser) {
-        // Find user's entry and rank
         const userEntryIndex = leaderboard.findIndex(entry => {
-          // Check by user ID in different possible formats
           return (
             (entry.user && entry.user.toString() === effectiveUser.id.toString()) ||
             (entry.userId && entry.userId.toString() === effectiveUser.id.toString())
@@ -152,7 +141,7 @@ export default function QuizResults() {
     }
   }, [leaderboard, user, localUser]);
   
-  // Fetch user's answers for this quiz
+  // Ambil jawaban pengguna untuk kuis ini
   useEffect(() => {
     const fetchUserAnswers = async () => {
       const effectiveUser = user || localUser;
@@ -162,7 +151,7 @@ export default function QuizResults() {
       try {
         setAnswersLoading(true);
         
-        console.log("Fetching user answers with ID:", effectiveUser.id);
+        console.log("Mengambil jawaban pengguna dengan ID:", effectiveUser.id);
         
         const response = await fetch(`/api/quiz/${quizId}/user-answers`, {
           headers: {
@@ -173,20 +162,20 @@ export default function QuizResults() {
         });
         
         if (!response.ok) {
-          console.error("Failed to fetch user answers:", response.status);
+          console.error("Gagal mengambil jawaban pengguna:", response.status);
           return;
         }
         
         const data = await response.json();
         
         if (data.success) {
-          console.log("User answers fetched:", data.data.length);
+          console.log("Jawaban pengguna diambil:", data.data.length);
           setUserAnswers(data.data || []);
         } else {
-          console.error("Error fetching answers:", data.message);
+          console.error("Kesalahan mengambil jawaban:", data.message);
         }
       } catch (error) {
-        console.error("Error fetching user answers:", error);
+        console.error("Kesalahan mengambil jawaban pengguna:", error);
       } finally {
         setAnswersLoading(false);
       }
@@ -198,56 +187,48 @@ export default function QuizResults() {
   }, [user, localUser, quizId, isCheckingAuth]);
 
   if (isCheckingAuth || loading || answersLoading) {
-    return <Loading message="Loading quiz results..." />;
+    return <Loading message="Memuat hasil kuis..." />;
   }
 
-  // Use the user from either Auth context or localStorage
   const effectiveUser = user || localUser;
   
   if (!effectiveUser) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md text-center">
-          <h2 className="text-2xl font-bold mb-6">Authentication Required</h2>
-          <p className="mb-6">You need to join the quiz to view results.</p>
+        <div className="max-w-3xl mx-auto bg-card p-6 rounded-2xl shadow-md border border-gray-700">
+          <h2 className="text-2xl font-bold mb-6 text-center bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+            Hasil Kuis
+          </h2>
+          <p className="mb-6 text-gray-400">Anda perlu bergabung dengan kuis untuk melihat hasil.</p>
           <Link
             href={`/join/${quizId}`}
-            className="px-6 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition duration-200"
+            className="px-6 py-3 bg-indigo-500 text-gray-200 rounded-lg font-medium hover:bg-indigo-600 transition duration-200"
           >
-            Join Quiz
+            Gabung Kuis
           </Link>
         </div>
       </div>
     );
   }
 
-  // Determine what to display for score and correct answers
   const displayScore = userEntry ? userEntry.score : effectiveUser?.score || 0;
   
-  // For correct answers, use the data from leaderboard or estimate from score or userAnswers
   let correctAnswers = 0;
   let totalQuestions = 0;
   
   if (userEntry) {
-    // Use the values from the leaderboard entry
     correctAnswers = userEntry.correctAnswers || 0;
     totalQuestions = userEntry.totalQuestions || 0;
   } else if (userAnswers.length > 0) {
-    // If we have answers data, use that
     totalQuestions = userAnswers.length;
     correctAnswers = userAnswers.filter(a => a.isCorrect).length;
   } else if (leaderboard && leaderboard.length > 0) {
-    // If we have leaderboard data but no user entry, use the total questions from another entry
     totalQuestions = leaderboard[0].totalQuestions || 0;
-    
-    // Estimate correct answers based on score
     if (displayScore > 0) {
-      // Basic formula: score is approximately 100 per correct answer + speed bonus
       correctAnswers = Math.round(displayScore / 150);
     }
   }
   
-  // Force reasonable values if we have incongruent data
   if (displayScore > 200 && correctAnswers === 0) {
     correctAnswers = Math.max(1, Math.floor(displayScore / 150));
   }
@@ -256,58 +237,60 @@ export default function QuizResults() {
     totalQuestions = Math.max(correctAnswers, 1);
   }
 
-  console.log("Rendering results with user:", effectiveUser.name, "score:", displayScore);
+  console.log("Merender hasil dengan pengguna:", effectiveUser.name, "skor:", displayScore);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-6 text-center">Quiz Results</h2>
+    <div className="container mx-auto px-4 py-8 bg-gray-800">
+      <div className="max-w-3xl mx-auto bg-card p-6 rounded-2xl shadow-md border border-gray-700">
+        <h2 className="text-2xl font-bold mb-6 text-center bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+          Hasil Kuis
+        </h2>
         
         {error && (
-          <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-lg">
+          <div className="mb-6 p-4 bg-red-900/50 text-red-400 rounded-lg">
             <p>{error}</p>
           </div>
         )}
         
-        <div className="bg-gray-50 p-6 rounded-lg mb-8 shadow-sm">
-          <div className="mb-6 pb-6 border-b border-gray-200">
-            <h3 className="text-lg text-gray-700 mb-2">Participant</h3>
-            <p className="text-xl font-bold">{effectiveUser.name}</p>
+        <div className="bg-gray-800 p-6 rounded-xl mb-8 shadow-sm border border-gray-700">
+          <div className="mb-6 pb-6 border-b border-gray-700">
+            <h3 className="text-lg text-gray-400 mb-2">Peserta</h3>
+            <p className="text-xl font-bold text-gray-200">{effectiveUser.name}</p>
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="p-4 bg-white rounded-lg shadow-sm">
-              <h4 className="text-sm text-gray-500 mb-1">Total Score</h4>
-              <p className="text-2xl font-bold text-blue-600">{displayScore}</p>
+            <div className="p-4 bg-gray-800 rounded-lg shadow-sm border border-gray-700">
+              <h4 className="text-sm text-gray-400 mb-1">Total Skor</h4>
+              <p className="text-2xl font-bold text-indigo-400">{displayScore}</p>
             </div>
             
-            <div className="p-4 bg-white rounded-lg shadow-sm">
-              <h4 className="text-sm text-gray-500 mb-1">Correct Answers</h4>
+            <div className="p-4 bg-gray-800 rounded-lg shadow-sm border border-gray-700">
+              <h4 className="text-sm text-gray-400 mb-1">Jawaban Benar</h4>
               <p className="text-xl">
-                <span className="font-bold text-green-600">{correctAnswers}</span>
-                <span className="text-gray-500"> / {totalQuestions}</span>
+                <span className="font-bold text-emerald-400">{correctAnswers}</span>
+                <span className="text-gray-400"> / {totalQuestions}</span>
               </p>
             </div>
-            
+                    
             {userRank && (
-              <div className="p-4 bg-white rounded-lg shadow-sm">
-                <h4 className="text-sm text-gray-500 mb-1">Rank</h4>
-                <p className="text-2xl font-bold text-amber-500">#{userRank}</p>
+              <div className="p-4 bg-gray-800 rounded-lg shadow-sm border border-gray-700">
+                <h4 className="text-sm text-gray-400 mb-1">Peringkat</h4>
+                <p className="text-2xl font-bold text-amber-400">#{userRank}</p>
               </div>
             )}
             
             {userEntry && userEntry.averageResponseTime > 0 && (
-              <div className="p-4 bg-white rounded-lg shadow-sm">
-                <h4 className="text-sm text-gray-500 mb-1">Avg. Response Time</h4>
-                <p className="text-xl font-medium">{(userEntry.averageResponseTime / 1000).toFixed(2)}s</p>
+              <div className="p-4 bg-gray-800 rounded-lg shadow-sm border border-gray-700">
+                <h4 className="text-sm text-gray-400 mb-1">Rata-rata Waktu</h4>
+                <p className="text-xl font-medium text-gray-200">{(userEntry.averageResponseTime / 1000).toFixed(2)} detik</p>
               </div>
             )}
           </div>
           
           {userRank && leaderboard && leaderboard.length > 0 && (
-            <div className="p-4 bg-blue-50 rounded-lg mb-4">
+            <div className="p-4 bg-indigo-900/50 rounded-lg mb-4 text-gray-200">
               <p>
-                You placed <strong>#{userRank}</strong> out of {leaderboard.length} participants
+                Anda berada di peringkat <strong>#{userRank}</strong> dari {leaderboard.length} peserta
               </p>
             </div>
           )}
@@ -315,19 +298,21 @@ export default function QuizResults() {
           <div className="text-center">
             <button
               onClick={() => setShowAnswerHistory(!showAnswerHistory)}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-200"
+              className="px-4 py-2 bg-indigo-500 text-gray-200 rounded-lg font-medium hover:bg-indigo-600 transition duration-200"
             >
-              {showAnswerHistory ? "Hide Answer History" : "Show Answer History"}
+              {showAnswerHistory ? "Sembunyikan Riwayat Jawaban" : "Tampilkan Riwayat Jawaban"}
             </button>
           </div>
         </div>
         
         {showAnswerHistory && (
-          <div className="mb-8 bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-xl font-semibold mb-4 text-center">Your Answer History</h3>
+          <div className="mb-8 bg-gray-800 p-4 rounded-lg border border-gray-700">
+            <h3 className="text-xl font-semibold mb-4 text-center text-gray-200">
+              Riwayat Jawaban Anda
+            </h3>
             
             {userAnswers.length === 0 ? (
-              <p className="text-center text-gray-500 italic">No answer history available</p>
+              <p className="text-center text-gray-400 italic">Tidak ada riwayat jawaban tersedia</p>
             ) : (
               <div className="space-y-4">
                 {userAnswers.map((answer, index) => (
@@ -341,15 +326,15 @@ export default function QuizResults() {
         <div className="flex flex-col sm:flex-row justify-center gap-4">
           <Link
             href={`/leaderboard/${quizId}`}
-            className="px-6 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition duration-200 text-center"
+            className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-gray-200 rounded-lg font-medium transition-colors duration-200 text-center"
           >
-            View Leaderboard
+            Lihat Papan Peringkat
           </Link>
           <Link
             href="/"
-            className="px-6 py-3 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition duration-200 text-center"
+            className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-gray-200 rounded-lg font-medium transition-colors duration-200 text-center"
           >
-            Back to Home
+            Kembali ke Beranda
           </Link>
         </div>
       </div>

@@ -3,17 +3,96 @@
 @tailwind utilities;
 
 :root {
-  --primary-color: #3498db;
-  --primary-dark: #2980b9;
-  --secondary-color: #2c3e50;
-  --success-color: #2ecc71;
-  --danger-color: #e74c3c;
-  --warning-color: #f39c12;
-  --info-color: #3498db;
-  --light-color: #ecf0f1;
-  --dark-color: #2c3e50;
-  --correct-color: #2ecc71;
-  --incorrect-color: #e74c3c;
+  --primary-color: #6366f1;
+  --primary-dark: #4f46e5;
+  --secondary-color: #334155;
+  --success-color: #10b981;
+  --danger-color: #ef4444;
+  --warning-color: #f59e0b;
+  --info-color: #3b82f6;
+  --background-color: #1f2937;
+  --card-color: #1e293b;
+  --text-color: #f3f4f6;
+  --text-muted: #9ca3af;
+}
+
+/* Base styles */
+@layer base {
+  body {
+    @apply bg-background text-text font-sans;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight;
+  }
+  
+  button, a {
+    @apply transition-all duration-200;
+  }
+}
+
+/* Component styles */
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 
+           transform hover:scale-[1.02] focus:outline-none focus:ring-2 
+           focus:ring-offset-2 active:scale-[0.98];
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary text-white hover:bg-primary-darker focus:ring-primary;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-background-lighter text-text hover:bg-background focus:ring-background-lighter;
+  }
+  
+  .btn-success {
+    @apply btn bg-success text-white hover:brightness-110 focus:ring-success;
+  }
+  
+  .btn-danger {
+    @apply btn bg-danger text-white hover:brightness-110 focus:ring-danger;
+  }
+  
+  .btn-warning {
+    @apply btn bg-warning text-white hover:brightness-110 focus:ring-warning;
+  }
+  
+  .card {
+    @apply bg-card rounded-xl shadow-md transition-all duration-300;
+  }
+  
+  .input {
+    @apply w-full px-4 py-3 border border-gray-600 rounded-lg 
+          focus:outline-none focus:ring-2 focus:ring-primary-lighter
+          bg-background-lighter text-text transition-colors duration-200;
+  }
+  
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .badge-primary {
+    @apply badge bg-primary/20 text-primary-lighter;
+  }
+  
+  .badge-success {
+    @apply badge bg-success/20 text-success;
+  }
+  
+  .badge-danger {
+    @apply badge bg-danger/20 text-danger;
+  }
+  
+  .badge-warning {
+    @apply badge bg-warning/20 text-warning;
+  }
+  
+  .badge-info {
+    @apply badge bg-info/20 text-info;
+  }
 }
 
 /* Animation keyframes */
@@ -28,40 +107,10 @@
   }
 }
 
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(231, 76, 60, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
-  }
-}
-
-/* Custom styles */
-.container {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-.fadeIn {
-  animation: fadeIn 0.5s ease-out;
-}
-
-.pulse {
-  animation: pulse 0.5s infinite;
-}
-
-/* Add to globals.css */
-
-@keyframes fade-in-down {
+@keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -69,7 +118,7 @@
   }
 }
 
-@keyframes scale-in {
+@keyframes expandIn {
   from {
     opacity: 0;
     transform: scale(0.9);
@@ -80,56 +129,102 @@
   }
 }
 
-@keyframes slide-in-right {
-  from {
-    opacity: 0;
-    transform: translateX(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes pulse-subtle {
-  0% {
-    transform: scale(1);
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
   }
   50% {
-    transform: scale(1.03);
-  }
-  100% {
-    transform: scale(1);
+    transform: translateY(-5px);
   }
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: -468px 0;
+@keyframes blinkPulse {
+  0%, 100% {
+    opacity: 1;
   }
-  100% {
-    background-position: 468px 0;
+  50% {
+    opacity: 0.6;
   }
 }
 
-.animate-fade-in-down {
-  animation: fade-in-down 0.3s ease-out forwards;
+/* Animation utility classes */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
 }
 
-.animate-scale-in {
-  animation: scale-in 0.3s ease-out forwards;
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
 }
 
-.animate-slide-in-right {
-  animation: slide-in-right 0.3s ease-out forwards;
+.animate-expand-in {
+  animation: expandIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 }
 
 .animate-pulse-subtle {
-  animation: pulse-subtle 2s infinite;
+  animation: blinkPulse 2s infinite;
 }
 
-.shimmer {
-  background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.2) 20%, rgba(255, 255, 255, 0) 40%);
-  background-size: 1000px 100%;
-  animation: shimmer 2s infinite linear;
+/* Animation delays */
+.delay-100 {
+  animation-delay: 100ms;
+}
+
+.delay-200 {
+  animation-delay: 200ms;
+}
+
+.delay-300 {
+  animation-delay: 300ms;
+}
+
+.delay-400 {
+  animation-delay: 400ms;
+}
+
+.delay-500 {
+  animation-delay: 500ms;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #374151; /* gray-700 */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4b5563; /* gray-600 */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6b7280; /* gray-500 */
+}
+
+/* Custom container with responsive padding */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    padding: 0 2rem;
+  }
 }

@@ -21,12 +21,12 @@ export default function Register() {
     e.preventDefault();
     
     if (!name || !email || !password) {
-      setError('All fields are required');
+      setError('Semua field harus diisi');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError('Password tidak cocok');
       return;
     }
 
@@ -39,11 +39,11 @@ export default function Register() {
       if (result.success) {
         router.push('/admin/panel');
       } else {
-        setError(result.message || 'Registration failed. Please try again.');
+        setError(result.message || 'Registrasi gagal. Silakan coba lagi.');
       }
     } catch (err) {
       console.error('Registration error:', err);
-      setError('An unexpected error occurred. Please try again.');
+      setError('Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setLoading(false);
     }
@@ -51,26 +51,28 @@ export default function Register() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-6 text-center">Register Admin Account</h2>
+      <div className="max-w-md mx-auto bg-card p-8 rounded-xl shadow-md border border-gray-700">
+        <h2 className="text-2xl font-bold mb-6 text-center bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+          Register Admin Account
+        </h2>
         
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="animate-fade-in">
           <div className="mb-4">
-            <label htmlFor="name" className="block mb-2 text-sm font-medium">
-              Name
+            <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-300">
+              Nama
             </label>
             <input
               type="text"
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input"
               disabled={loading}
             />
           </div>
           
           <div className="mb-4">
-            <label htmlFor="email" className="block mb-2 text-sm font-medium">
+            <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-300">
               Email
             </label>
             <input
@@ -78,13 +80,13 @@ export default function Register() {
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input"
               disabled={loading}
             />
           </div>
           
           <div className="mb-4">
-            <label htmlFor="password" className="block mb-2 text-sm font-medium">
+            <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-300">
               Password
             </label>
             <input
@@ -92,34 +94,37 @@ export default function Register() {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input"
               disabled={loading}
             />
           </div>
           
           <div className="mb-6">
-            <label htmlFor="confirmPassword" className="block mb-2 text-sm font-medium">
-              Confirm Password
+            <label htmlFor="confirmPassword" className="block mb-2 text-sm font-medium text-gray-300">
+              Konfirmasi Password
             </label>
             <input
               type="password"
               id="confirmPassword"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input"
               disabled={loading}
             />
           </div>
           
           {error && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+            <div className="mb-4 p-3 bg-red-900/20 text-red-400 rounded-lg flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
               {error}
             </div>
           )}
           
           <button 
             type="submit" 
-            className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition duration-200 disabled:opacity-50"
+            className="btn-primary w-full"
             disabled={loading}
           >
             {loading ? 'Registering...' : 'Register'}
@@ -127,8 +132,8 @@ export default function Register() {
         </form>
         
         <div className="mt-6 text-center">
-          <Link href="/login" className="text-blue-500 hover:underline">
-            Already have an account? Login
+          <Link href="/login" className="text-indigo-400 hover:text-indigo-300">
+            Sudah memiliki akun? Login
           </Link>
         </div>
       </div>
