@@ -1,4 +1,4 @@
-// app/api/quiz/answer/route.js - Tambahan penanganan jawaban kosong
+// app/api/quiz/answer/route.js
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/lib/db";
 import Answer from "@/app/models/Answer";
@@ -33,7 +33,7 @@ export async function POST(request) {
       );
     }
     
-    // Validate input - Perbaikan: Terima selectedOption = -1 untuk jawaban kosong
+    // Validate input
     if (selectedOption === undefined) {
       return NextResponse.json(
         { success: false, message: "Missing required fields" },
@@ -52,8 +52,8 @@ export async function POST(request) {
       );
     }
     
-    // Check if answer is correct - Jawaban -1 (kosong) selalu salah
-    const isCorrect = selectedOption !== -1 && selectedOption === question.correctOption;
+    // Check if answer is correct
+    const isCorrect = selectedOption === question.correctOption;
     console.log(`Answer is ${isCorrect ? 'correct' : 'incorrect'}, selected: ${selectedOption}, correct: ${question.correctOption}`);
     
     // Look up quiz to get participant count
@@ -101,7 +101,6 @@ export async function POST(request) {
     }
     
     // Update user score - partial update for immediate feedback
-    // PENTING: Hanya berikan poin jika jawaban benar
     try {
       if (isCorrect) {
         const baseScore = 100; // Base score for correct answer
@@ -121,8 +120,6 @@ export async function POST(request) {
         );
         
         console.log(`User score updated, new score: ${updatedUser.score}`);
-      } else {
-        console.log(`Answer is incorrect or empty, no points awarded`);
       }
     } catch (err) {
       console.error("Error updating user score:", err);
