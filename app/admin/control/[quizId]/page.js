@@ -1,4 +1,4 @@
-// app/admin/control/[quizId]/page.js
+// app/admin/control/[quizId]/page.js - Updated control panel
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -26,7 +26,9 @@ export default function QuizControl() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [autoAdvance, setAutoAdvance] = useState(true);
+  const [participantAdvance, setParticipantAdvance] = useState(true); // New setting for participant-based auto-advance
   const [timeLeft, setTimeLeft] = useState(0);
+  const [answeredCount, setAnsweredCount] = useState(0); // Track how many participants have answered
   
   // Define fetchQuizData with useCallback BEFORE using it in useEffect
   const fetchQuizData = useCallback(async () => {
@@ -61,6 +63,11 @@ export default function QuizControl() {
       if (participantsData.success) {
         setParticipants(participantsData.data || []);
       }
+      
+      // Fetch current question's answer count if quiz is active
+      if (quizData.data.status === 'active' && quizData.data.currentQuestionIndex !== undefined) {
+        fetchAnswerCount(quizId, quizData.data.currentQuestionIndex);
+      }
     } catch (err) {
       console.error('Error fetching quiz data:', err);
       setError('Failed to load quiz data. Please try again.');
@@ -68,6 +75,25 @@ export default function QuizControl() {
       setLoading(false);
     }
   }, [quizId]);
+  
+  // New function to fetch answer count for the current question
+  const fetchAnswerCount = async (quizId, questionIndex) => {
+    if (questionIndex === undefined || !questions[questionIndex]) return;
+    
+    try {
+      const questionId = questions[questionIndex]._id;
+      const response = await fetch(`/api/quiz/${quizId}/answer-count/${questionId}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setAnsweredCount(data.data.answeredCount || 0);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching answer count:', err);
+    }
+  };
   
   // Validate admin access
   useEffect(() => {
@@ -136,6 +162,22 @@ export default function QuizControl() {
           setTimeLeft(0);
         });
         
+        // Listen for participant answer updates
+        quizChannel.bind('participant-answered', (data) => {
+          console.log("Participant answered event received:", data);
+          setAnsweredCount(data.answeredCount || 0);
+          
+          // If participant-based auto-advance is enabled
+          if (participantAdvance && data.allAnswered) {
+            console.log("All participants have answered, auto-advancing");
+            
+            // Add a slight delay to allow late responses to process
+            setTimeout(async () => {
+              handleNextQuestion();
+            }, 3000);
+          }
+        });
+        
         return () => {
           adminChannel.unbind_all();
           quizChannel.unbind_all();
@@ -144,7 +186,7 @@ export default function QuizControl() {
         };
       }
     }
-  }, [quizId, quizStatus, autoAdvance, fetchQuizData]);
+  }, [quizId, quizStatus, autoAdvance, participantAdvance, fetchQuizData, questions]);
   
   // Start quiz
   const handleStartQuiz = async () => {
@@ -169,7 +211,10 @@ export default function QuizControl() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ autoAdvance })
+        body: JSON.stringify({ 
+          autoAdvance,
+          participantAdvance // Include the new setting
+        })
       });
       
       const data = await response.json();
@@ -223,6 +268,38 @@ export default function QuizControl() {
     }
   };
   
+  // Toggle participant-based auto-advance setting
+  const handleToggleParticipantAdvance = async () => {
+    try {
+      setActionLoading(true);
+      setError('');
+      
+      const newValue = !participantAdvance;
+      
+      const response = await fetch(`/api/quiz/${quizId}/settings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ participantAdvance: newValue })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setParticipantAdvance(newValue);
+        setSuccess(`Participant-based auto-advancement ${newValue ? 'enabled' : 'disabled'} successfully!`);
+      } else {
+        setError(data.message || 'Failed to update participant auto-advance setting');
+      }
+    } catch (err) {
+      console.error('Error updating participant auto-advance setting:', err);
+      setError('Failed to update setting. Please try again.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+  
   // Move to next question
   const handleNextQuestion = async () => {
     try {
@@ -242,6 +319,7 @@ export default function QuizControl() {
       if (data.success) {
         // Update local state
         setCurrentQuestionIndex(data.data.currentQuestionIndex);
+        setAnsweredCount(0); // Reset answered count for the new question
         
         if (data.data.status === 'finished') {
           setQuizStatus('finished');
@@ -395,19 +473,39 @@ export default function QuizControl() {
             
             {quizStatus === 'active' && (
               <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                <div className="flex items-center mb-2">
-                  <span className="mr-2">Auto-Advance:</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    autoAdvance 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {autoAdvance ? 'Enabled' : 'Disabled'}
-                  </span>
+                <div className="flex flex-col gap-2 mb-2">
+                  <div className="flex items-center">
+                    <span className="mr-2">Time-based Auto-Advance:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      autoAdvance 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {autoAdvance ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <span className="mr-2">Participant-based Auto-Advance:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      participantAdvance 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {participantAdvance ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
                 </div>
+                
                 {autoAdvance && timeLeft > 0 && (
                   <p className="text-sm text-gray-600">
                     Next question in: <span className="font-medium">{timeLeft} seconds</span>
+                  </p>
+                )}
+                
+                {participantAdvance && (
+                  <p className="text-sm text-gray-600">
+                    Responses: <span className="font-medium">{answeredCount}</span> of <span className="font-medium">{participants.length}</span> participants
                   </p>
                 )}
               </div>
@@ -416,17 +514,32 @@ export default function QuizControl() {
             <div className="flex flex-wrap gap-2">
               {quizStatus === 'waiting' && (
                 <div className="space-y-2">
-                  <div className="flex items-center mb-2">
-                    <input
-                      type="checkbox"
-                      id="autoAdvance"
-                      checked={autoAdvance}
-                      onChange={() => setAutoAdvance(!autoAdvance)}
-                      className="mr-2"
-                    />
-                    <label htmlFor="autoAdvance" className="text-sm">
-                      Enable automatic question advancement
-                    </label>
+                  <div className="flex flex-col gap-2 mb-2">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="autoAdvance"
+                        checked={autoAdvance}
+                        onChange={() => setAutoAdvance(!autoAdvance)}
+                        className="mr-2"
+                      />
+                      <label htmlFor="autoAdvance" className="text-sm">
+                        Enable time-based question advancement
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="participantAdvance"
+                        checked={participantAdvance}
+                        onChange={() => setParticipantAdvance(!participantAdvance)}
+                        className="mr-2"
+                      />
+                      <label htmlFor="participantAdvance" className="text-sm">
+                        Auto-advance when all participants answer
+                      </label>
+                    </div>
                   </div>
                   
                   <button
@@ -446,7 +559,15 @@ export default function QuizControl() {
                     disabled={actionLoading}
                     className={`px-4 py-2 ${autoAdvance ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-500 hover:bg-green-600'} text-white rounded transition duration-200 disabled:opacity-50`}
                   >
-                    {actionLoading ? 'Updating...' : autoAdvance ? 'Disable Auto-Advance' : 'Enable Auto-Advance'}
+                    {actionLoading ? 'Updating...' : autoAdvance ? 'Disable Time Auto-Advance' : 'Enable Time Auto-Advance'}
+                  </button>
+                  
+                  <button
+                    onClick={handleToggleParticipantAdvance}
+                    disabled={actionLoading}
+                    className={`px-4 py-2 ${participantAdvance ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-500 hover:bg-green-600'} text-white rounded transition duration-200 disabled:opacity-50`}
+                  >
+                    {actionLoading ? 'Updating...' : participantAdvance ? 'Disable Participant Auto-Advance' : 'Enable Participant Auto-Advance'}
                   </button>
                   
                   <button
@@ -577,7 +698,12 @@ export default function QuizControl() {
           <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-100">
             <h3 className="text-lg font-semibold mb-3">Current Question</h3>
             <div className="mb-3">
-              <p className="font-medium mb-2">{questions[currentQuestionIndex].text}</p>
+              <div className="flex justify-between mb-2">
+                <p className="font-medium">{questions[currentQuestionIndex].text}</p>
+                <p className="text-sm text-blue-600">
+                  Responses: <span className="font-bold">{answeredCount}</span> / {participants.length}
+                </p>
+              </div>
               <ul className="space-y-2">
                 {questions[currentQuestionIndex].options.map((option, index) => (
                   <li key={index} className={`p-2 border rounded ${

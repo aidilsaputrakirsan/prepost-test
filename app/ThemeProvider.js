@@ -11,8 +11,6 @@ export function ThemeProvider({ children }) {
   );
 }
 
-// Then update your layout.js:
-// app/layout.js
 import { Inter } from 'next/font/google';
 import './globals.css';
 import ClientLayout from './ClientLayout';

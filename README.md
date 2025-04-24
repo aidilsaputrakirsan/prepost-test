@@ -2,78 +2,79 @@
 
 ![PrePostTEST Banner](https://i.imgur.com/XyPZCnL.png)
 
-PrePostTEST is a modern, real-time quiz application designed for educators, trainers, and event organizers to create interactive quiz sessions. With support for both live quizzes and self-paced assessments, it offers a flexible platform for knowledge testing in various environments.
+PrePostTEST adalah platform kuis interaktif modern yang dirancang untuk pendidik, pelatih, dan penyelenggara acara untuk membuat sesi kuis interaktif. Dengan dukungan untuk kuis langsung dan penilaian mandiri, PrePostTEST menawarkan platform fleksibel untuk pengujian pengetahuan di berbagai lingkungan.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fyourusername%2Fpreposttest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
-## ✨ Features
+## ✨ Fitur
 
-- **Real-time Quiz Experience**: Live quiz sessions with instant results
-- **Admin Dashboard**: Create, manage, and control quizzes with ease
-- **Participant Management**: Track participant engagement and performance
-- **Dynamic Leaderboards**: Real-time rankings and performance metrics
-- **Question Bank**: Create and reuse questions across multiple quizzes
-- **Dark/Light Mode**: Stylish interface with theme support
-- **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
-- **Results Analytics**: Detailed insights into quiz performance
-- **Multi-format Questions**: Support for various question types (coming soon)
-- **Customizable Timer**: Set time limits for questions
+- **Pengalaman Kuis Real-time**: Sesi kuis langsung dengan hasil instan
+- **Dashboard Admin**: Buat, kelola, dan kontrol kuis dengan mudah
+- **Manajemen Peserta**: Lacak keterlibatan dan kinerja peserta
+- **Papan Peringkat Dinamis**: Peringkat dan metrik kinerja real-time
+- **Bank Soal**: Buat dan gunakan kembali pertanyaan di beberapa kuis
+- **Mode Gelap/Terang**: Antarmuka menarik dengan dukungan tema
+- **Desain Responsif**: Berfungsi sempurna di desktop, tablet, dan perangkat mobile
+- **Analisis Hasil**: Wawasan mendetail tentang kinerja kuis
+- **Pertanyaan Multi-format**: Dukungan untuk berbagai jenis pertanyaan (segera hadir)
+- **Timer yang Dapat Disesuaikan**: Tetapkan batas waktu untuk pertanyaan
+- **Otomatisasi Pertanyaan**: Perpindahan otomatis ke pertanyaan berikutnya setelah waktu habis atau setelah semua peserta menjawab
 
 ## 🚀 Demo
 
-Try the application: [https://prepost-test-v3.vercel.app/](https://prepost-test-v3.vercel.app/)
+Coba aplikasi: [https://prepost-test-v3.vercel.app/](https://prepost-test-v3.vercel.app/)
 
-**Demo Admin Credentials:**
+**Kredensial Admin Demo:**
 - Email: admin@example.com
 - Password: admin123
 
-## 🛠️ Technologies
+## 🛠️ Teknologi
 
 - **Frontend**:
   - Next.js 15.x (React 19.x)
-  - TailwindCSS for styling
-  - React Context API for state management
-  - Real-time updates with Pusher
+  - TailwindCSS untuk styling
+  - React Context API untuk manajemen state
+  - Pembaruan real-time dengan Pusher
 
 - **Backend**:
   - Next.js API Routes
-  - MongoDB with Mongoose ODM
-  - NextAuth.js for authentication
-  - Pusher for real-time communication
+  - MongoDB dengan Mongoose ODM
+  - NextAuth.js untuk autentikasi
+  - Pusher untuk komunikasi real-time
 
-- **Infrastructure**:
-  - Vercel for hosting and deployment
-  - MongoDB Atlas for database
+- **Infrastruktur**:
+  - Vercel untuk hosting dan deployment
+  - MongoDB Atlas untuk database
 
-## 📋 Prerequisites
+## 📋 Prasyarat
 
-- Node.js 18.x or higher
-- npm or yarn
-- MongoDB database (local or MongoDB Atlas)
-- Pusher account for real-time functionality
+- Node.js 18.x atau lebih tinggi
+- npm atau yarn
+- Database MongoDB (lokal atau MongoDB Atlas)
+- Akun Pusher untuk fungsionalitas real-time
 
-## 🔧 Installation
+## 🔧 Instalasi
 
-1. **Clone the repository**
+1. **Clone repositori**
 
 ```bash
 git clone https://github.com/yourusername/preposttest.git
 cd preposttest
 ```
 
-2. **Install dependencies**
+2. **Instal dependensi**
 
 ```bash
 npm install
-# or
+# atau
 yarn install
 ```
 
-3. **Set up environment variables**
+3. **Siapkan variabel lingkungan**
 
-Create a `.env.local` file in the root directory with the following variables:
+Buat file `.env.local` di direktori root dengan variabel berikut:
 
 ```
 # MongoDB
@@ -90,207 +91,223 @@ NEXT_PUBLIC_PUSHER_KEY=your_pusher_key
 NEXT_PUBLIC_PUSHER_CLUSTER=your_pusher_cluster
 ```
 
-4. **Create an admin user**
+4. **Buat pengguna admin**
 
 ```bash
 npm run create-admin
-# or
+# atau
 yarn create-admin
 ```
 
-5. **Run the development server**
+5. **Jalankan server pengembangan**
 
 ```bash
 npm run dev
-# or
+# atau
 yarn dev
 ```
 
-6. **Open your browser**
+6. **Buka browser Anda**
 
-Navigate to [http://localhost:3000](http://localhost:3000) to see the application.
+Buka [http://localhost:3000](http://localhost:3000) untuk melihat aplikasi.
 
-## 📱 Usage Guide
+## 📱 Panduan Penggunaan
 
-### For Quiz Creators (Admins)
+### Untuk Pembuat Kuis (Admin)
 
-1. **Login to the admin panel**
-   - Navigate to `/login`
-   - Enter your admin credentials
+1. **Login ke panel admin**
+   - Buka `/login`
+   - Masukkan kredensial admin Anda
 
-2. **Create a new quiz**
-   - From the admin panel, click "Create New Quiz"
-   - Optionally specify a custom quiz ID
+2. **Buat kuis baru**
+   - Dari panel admin, klik "Create New Quiz"
+   - Secara opsional tentukan ID kuis kustom
 
-3. **Add questions**
-   - Add questions with multiple-choice options
-   - Set the correct answer and time limit for each question
+3. **Tambahkan pertanyaan**
+   - Tambahkan pertanyaan dengan opsi pilihan ganda
+   - Tetapkan jawaban yang benar dan batas waktu untuk setiap pertanyaan
 
-4. **Share the quiz**
-   - Get the quiz ID or direct link to share with participants
+4. **Bagikan kuis**
+   - Dapatkan ID kuis atau tautan langsung untuk dibagikan dengan peserta
 
-5. **Start and control the quiz**
-   - Use the control panel to start the quiz when ready
-   - Monitor participants in real-time
-   - Advance questions manually or use auto-advance
+5. **Mulai dan kontrol kuis**
+   - Gunakan panel kontrol untuk memulai kuis ketika siap
+   - Pantau peserta secara real-time
+   - Lanjutkan pertanyaan secara manual atau gunakan auto-advance
 
-6. **View results**
-   - Access detailed analytics after the quiz completes
-   - Export results as CSV if needed
+6. **Lihat hasil**
+   - Akses analitik mendetail setelah kuis selesai
+   - Ekspor hasil sebagai CSV jika diperlukan
 
-### For Participants
+### Untuk Peserta
 
-1. **Join a quiz**
-   - Enter the quiz ID on the homepage
-   - Provide your name to join
+1. **Bergabung dengan kuis**
+   - Masukkan ID kuis di halaman utama
+   - Berikan nama Anda untuk bergabung
 
-2. **Wait for the quiz to start**
-   - You'll be placed in a waiting room until the admin starts the quiz
+2. **Tunggu kuis dimulai**
+   - Anda akan ditempatkan di ruang tunggu sampai admin memulai kuis
 
-3. **Answer questions**
-   - Each question has a time limit
-   - Select your answer before time runs out
+3. **Jawab pertanyaan**
+   - Setiap pertanyaan memiliki batas waktu
+   - Pilih jawaban Anda sebelum waktu habis
 
-4. **View your results**
-   - See your score and correct answers after the quiz
-   - Compare your ranking on the leaderboard
+4. **Lihat hasil Anda**
+   - Lihat skor dan jawaban benar Anda setelah kuis
+   - Bandingkan peringkat Anda di papan peringkat
 
-## 🏗️ Architecture
+## 🏗️ Arsitektur
 
-PrePostTEST uses a modern architecture based on Next.js with App Router:
+PrePostTEST menggunakan arsitektur modern berbasis Next.js dengan App Router:
 
 ```
-app/                    # App Router directory
-├── admin/              # Admin panel routes
-│   ├── panel/          # Main admin dashboard
-│   ├── control/        # Quiz control interface
-│   ├── create-question/# Question creation
-│   └── leaderboard/    # Admin leaderboard view
-├── api/                # API routes
-│   ├── auth/           # Authentication endpoints
-│   ├── quiz/           # Quiz management endpoints
-│   └── user/           # User management endpoints
-├── components/         # React components
-│   ├── common/         # Shared components
-│   └── quiz/           # Quiz-specific components
-├── context/            # React context providers
-├── hooks/              # Custom React hooks
-├── lib/                # Utility functions and libraries
-├── models/             # Mongoose data models
-├── page.js             # Home page
-└── layout.js           # Root layout
+app/                    # Direktori App Router
+├── admin/              # Rute panel admin
+│   ├── panel/          # Dashboard admin utama
+│   ├── control/        # Antarmuka kontrol kuis
+│   ├── create-question/# Pembuatan pertanyaan
+│   ├── participants/   # Manajemen peserta
+│   └── leaderboard/    # Tampilan papan peringkat admin
+├── api/                # Rute API
+│   ├── auth/           # Endpoint autentikasi
+│   ├── quiz/           # Endpoint manajemen kuis
+│   ├── pusher/         # Endpoint autentikasi Pusher
+│   └── user/           # Endpoint manajemen pengguna
+├── components/         # Komponen React
+│   ├── common/         # Komponen bersama
+│   └── quiz/           # Komponen spesifik kuis
+├── context/            # Penyedia konteks React
+├── hooks/              # Hook React kustom
+├── lib/                # Fungsi dan pustaka utilitas
+├── models/             # Model data Mongoose
+├── join/               # Halaman bergabung dengan kuis
+├── leaderboard/        # Halaman papan peringkat
+├── login/              # Halaman login
+├── quiz/               # Halaman kuis aktif
+├── register/           # Halaman pendaftaran
+├── results/            # Halaman hasil kuis
+├── waiting-room/       # Halaman ruang tunggu
+├── page.js             # Halaman beranda
+└── layout.js           # Layout root
 ```
 
-### Data Flow
+### Aliran Data
 
-1. **Authentication**: NextAuth.js handles user authentication with JWT tokens
-2. **Quiz Creation**: Admins create quizzes stored in MongoDB
-3. **Participant Joining**: Participants join via unique quiz IDs
-4. **Real-time Updates**: Pusher channels manage real-time communication
-5. **State Management**: Context API manages application state
-6. **Results Processing**: Server computes scores and generates leaderboards
+1. **Autentikasi**: NextAuth.js menangani autentikasi pengguna dengan token JWT
+2. **Pembuatan Kuis**: Admin membuat kuis yang disimpan di MongoDB
+3. **Bergabung dengan Peserta**: Peserta bergabung melalui ID kuis unik
+4. **Pembaruan Real-time**: Saluran Pusher mengelola komunikasi real-time
+5. **Manajemen State**: Context API mengelola state aplikasi
+6. **Pemrosesan Hasil**: Server menghitung skor dan menghasilkan papan peringkat
 
-## 🌐 API Endpoints
+## 🌐 Endpoint API
 
-The application exposes several API endpoints:
+Aplikasi ini mengekspos beberapa endpoint API:
 
-### Quiz Management
-- `GET /api/quiz` - Get all quizzes (admin only)
-- `POST /api/quiz` - Create a new quiz (admin only)
-- `GET /api/quiz/[id]` - Get quiz by ID
-- `DELETE /api/quiz/[id]` - Delete quiz (admin only)
+### Manajemen Kuis
+- `GET /api/quiz` - Dapatkan semua kuis (hanya admin)
+- `POST /api/quiz` - Buat kuis baru (hanya admin)
+- `GET /api/quiz/[id]` - Dapatkan kuis berdasarkan ID
+- `DELETE /api/quiz/[id]` - Hapus kuis (hanya admin)
 
-### Question Management
-- `GET /api/quiz/[id]/questions` - Get quiz questions
-- `POST /api/quiz/[id]/questions` - Add questions to quiz (admin only)
+### Manajemen Pertanyaan
+- `GET /api/quiz/[id]/questions` - Dapatkan pertanyaan kuis
+- `POST /api/quiz/[id]/questions` - Tambahkan pertanyaan ke kuis (hanya admin)
+- `GET /api/quiz/[id]/current-question` - Dapatkan pertanyaan saat ini
 
-### Quiz Control
-- `POST /api/quiz/[id]/start` - Start quiz (admin only)
-- `POST /api/quiz/[id]/stop` - Stop quiz (admin only)
-- `POST /api/quiz/[id]/next-question` - Move to next question (admin only)
+### Kontrol Kuis
+- `POST /api/quiz/[id]/start` - Mulai kuis (hanya admin)
+- `POST /api/quiz/[id]/stop` - Hentikan kuis (hanya admin)
+- `POST /api/quiz/[id]/next-question` - Pindah ke pertanyaan berikutnya (hanya admin)
+- `POST /api/quiz/[id]/auto-advance` - Pengaturan kemajuan otomatis
 
-### Participant Management
-- `POST /api/user` - Create a participant
-- `GET /api/user/quiz/[quizId]` - Get participants for a quiz
+### Manajemen Peserta
+- `POST /api/user` - Buat peserta
+- `GET /api/user/quiz/[quizId]` - Dapatkan peserta untuk kuis
+- `DELETE /api/quiz/[quizId]/participants/[userId]` - Hapus peserta (hanya admin)
 
-### Answers
-- `POST /api/quiz/answer` - Submit an answer for a question
-- `GET /api/quiz/[id]/user-answers` - Get a user's answers for a quiz
+### Jawaban
+- `POST /api/quiz/answer` - Kirim jawaban untuk pertanyaan
+- `GET /api/quiz/[id]/user-answers` - Dapatkan jawaban pengguna untuk kuis
 
-## 📊 Database Schema
+### Papan Peringkat
+- `GET /api/quiz/[id]/leaderboard` - Dapatkan papan peringkat untuk kuis
 
-The application uses MongoDB with the following main collections:
+## 📊 Skema Database
 
-- **Users**: Stores admin users and participants
-- **QuizState**: Manages quiz configuration and state
-- **Questions**: Stores quiz questions and options
-- **Answers**: Records participant answers
-- **Leaderboard**: Stores quiz results and rankings
+Aplikasi ini menggunakan MongoDB dengan koleksi utama berikut:
+
+- **Users**: Menyimpan pengguna admin dan peserta
+- **QuizState**: Mengelola konfigurasi dan status kuis
+- **Questions**: Menyimpan pertanyaan dan opsi kuis
+- **Answers**: Mencatat jawaban peserta
+- **Leaderboard**: Menyimpan hasil dan peringkat kuis
 
 ## 🚀 Deployment
 
-### Deploying to Vercel
+### Deploy ke Vercel
 
-1. Push your code to GitHub
-2. Import your repository in Vercel
-3. Configure environment variables in Vercel dashboard
+1. Push kode Anda ke GitHub
+2. Impor repositori Anda di Vercel
+3. Konfigurasi variabel lingkungan di dashboard Vercel
 4. Deploy
 
-### Environment Variables for Production
+### Variabel Lingkungan untuk Produksi
 
-Ensure you set the following environment variables in your production environment:
+Pastikan Anda mengatur variabel lingkungan berikut di lingkungan produksi:
 
-- `MONGODB_URI`: Your MongoDB connection string
-- `NEXTAUTH_SECRET`: Secret for NextAuth.js
-- `NEXTAUTH_URL`: Your production URL
-- `PUSHER_APP_ID`: Pusher app ID
-- `PUSHER_SECRET`: Pusher secret key
-- `NEXT_PUBLIC_PUSHER_KEY`: Pusher public key
-- `NEXT_PUBLIC_PUSHER_CLUSTER`: Pusher cluster region
+- `MONGODB_URI`: String koneksi MongoDB Anda
+- `NEXTAUTH_SECRET`: Secret untuk NextAuth.js
+- `NEXTAUTH_URL`: URL produksi Anda
+- `PUSHER_APP_ID`: ID aplikasi Pusher
+- `PUSHER_SECRET`: Secret key Pusher
+- `NEXT_PUBLIC_PUSHER_KEY`: Public key Pusher
+- `NEXT_PUBLIC_PUSHER_CLUSTER`: Region cluster Pusher
 
 ## 🧪 Testing
 
-Run tests using Jest and React Testing Library:
+Jalankan tes menggunakan Jest dan React Testing Library:
 
 ```bash
 npm test
-# or
+# atau
 yarn test
 ```
 
 ## 🔄 Roadmap
 
-- [ ] Multi-language support
-- [ ] More question types (matching, fill-in-the-blank, etc.)
-- [ ] Custom quiz themes and branding
-- [ ] Integration with LMS platforms
-- [ ] Offline mode with sync
-- [ ] Team-based quizzes
+- [ ] Dukungan multi-bahasa
+- [ ] Lebih banyak jenis pertanyaan (pencocokan, isi-titik-titik, dll.)
+- [ ] Tema dan branding kuis kustom
+- [ ] Integrasi dengan platform LMS
+- [ ] Mode offline dengan sinkronisasi
+- [ ] Kuis berbasis tim
+- [ ] Analisis jawaban yang lebih lengkap
 
-## 👥 Contributing
+## 👥 Kontribusi
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Kontribusi sangat diterima! Silakan kirimkan Pull Request.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. Fork repositori
+2. Buat branch fitur Anda (`git checkout -b feature/amazing-feature`)
+3. Commit perubahan Anda (`git commit -m 'Add some amazing feature'`)
+4. Push ke branch (`git push origin feature/amazing-feature`)
+5. Buka Pull Request
 
-## 📄 License
+## 📄 Lisensi
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Proyek ini dilisensikan di bawah Lisensi MIT - lihat file [LICENSE](LICENSE) untuk detailnya.
 
-## 🙏 Acknowledgements
+## 🙏 Pengakuan
 
-- Created by Aidil Saputra Kirsan
-- Icon designs by [Heroicons](https://heroicons.com/)
-- Animations inspired by [Framer Motion](https://www.framer.com/motion/)
+- Dibuat oleh Aidil Saputra Kirsan
+- Desain ikon oleh [Heroicons](https://heroicons.com/)
+- Animasi terinspirasi oleh [Framer Motion](https://www.framer.com/motion/)
 
 ---
 
-## 📞 Contact
+## 📞 Kontak
 
 Aidil Saputra Kirsan - [your-email@example.com](mailto:your-email@example.com)
 
-Project Link: [https://github.com/yourusername/preposttest](https://github.com/yourusername/preposttest)
+Link Proyek: [https://github.com/yourusername/preposttest](https://github.com/yourusername/preposttest)

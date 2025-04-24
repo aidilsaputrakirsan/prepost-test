@@ -99,6 +99,16 @@ export const moveToNextQuestion = async (quizId) => {
       safeQuestion
     );
     
+    // Also send the explicit next-question event for better client handling
+    await pusher.trigger(
+      channelNames.quiz(quizId),
+      'next-question',
+      { 
+        questionId: question._id,
+        message: 'New question is available'
+      }
+    );
+    
     // Set up auto-advancement for the next question
     setupAutoAdvancement(quizId, question.timeLimit, nextIndex);
     
@@ -178,7 +188,25 @@ export const setupAutoAdvancement = (quizId, timeLimit, questionIndex) => {
         console.log(`Timer expired for quiz ${quizId}, scheduling auto-advancement`);
         
         // For Vercel, we don't use setTimeout on the server-side since functions may terminate
-        // Instead, we'll rely on client-side auto-advancement triggerring our endpoint
+        // Instead, we'll rely on client-side auto-advancement triggering our endpoint
+        
+        // However, we'll set up a short delay timer to try auto-advancing if possible
+        // This helps ensure the quiz progresses even if clients fail to trigger advancement
+        try {
+          const delayTimer = setTimeout(async () => {
+            // Check if the quiz can advance
+            const metadata = quizMetadata.get(quizId) || {};
+            if (metadata.autoAdvance) {
+              const success = await moveToNextQuestion(quizId);
+              console.log(`Server-side auto-advancement attempt: ${success ? 'successful' : 'failed'}`);
+            }
+          }, 5000); // 5 seconds delay after time is up
+          
+          // Store the timer so we can clear it if needed
+          activeTimers.set(quizId, delayTimer);
+        } catch (e) {
+          console.error("Error setting up delay timer:", e);
+        }
       }
     }, 1000);
     
